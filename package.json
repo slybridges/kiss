@@ -1,0 +1,51 @@
+{
+  "name": "@slybridges/kiss",
+  "version": "0.1.0",
+  "description": "Keep It Simple and Static site generator",
+  "main": "src/index.js",
+  "bin": {
+    "kiss": "src/cli.js"
+  },
+  "scripts": {
+    "build": "node src/index.js"
+  },
+  "author": "Sylvestre Dupont",
+  "license": "MIT",
+  "dependencies": {
+    "browser-sync": "^2.26.14",
+    "chalk": "^4.1.0",
+    "chokidar": "^3.5.1",
+    "date-fns": "^2.18.0",
+    "fast-glob": "^3.2.5",
+    "front-matter": "^4.0.2",
+    "fs-extra": "^9.1.0",
+    "jsdom": "^16.4.0",
+    "lodash": "^4.17.21",
+    "marked": "^2.0.0",
+    "nunjucks": "^3.2.3",
+    "slugify": "^1.4.7",
+    "yargs": "^16.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.20.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slybridges/kiss.git"
+  },
+  "keywords": [
+    "static-site-generator",
+    "static-site",
+    "ssg",
+    "blog",
+    "generator",
+    "website",
+    "html",
+    "markdown",
+    "nunjucks"
+  ],
+  "bugs": {
+    "url": "https://github.com/slybridges/kiss/issues"
+  },
+  "homepage": "https://github.com/slybridges/kiss#readme"
+}
