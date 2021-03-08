@@ -1,13 +1,13 @@
 const _ = require("lodash")
 const { copy, outputFile } = require("fs-extra")
 
-// removing any key ending with _override
-const omitOverrideAttributes = (obj) => {
+// removing any key ending with _no_cascade
+const omitNoCascadeAttributes = (obj) => {
   let result = {}
   _.forEach(obj, (value, key) => {
     if (_.isPlainObject(value)) {
-      result[key] = omitOverrideAttributes(value)
-    } else if (!key.endsWith("_override")) {
+      result[key] = omitNoCascadeAttributes(value)
+    } else if (!key.endsWith("_no_cascade")) {
       result[key] = value
     }
   })
@@ -63,7 +63,7 @@ const getParentPage = (pages, id) => {
     global.logger.error(`Couldn't find parent with id '${id}'`)
     console.log(Object.keys(pages))
   }
-  return omitOverrideAttributes(parent)
+  return omitNoCascadeAttributes(parent)
 }
 
 const copyFileAtPath = async (srcPath, destPath) => {

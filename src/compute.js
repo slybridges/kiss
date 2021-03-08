@@ -147,12 +147,19 @@ const computePageData = (data, config, pages, options = {}) => {
     // for recursive call
     options.topLevelData = data
   }
-  _.forEach(data, (value, key) => {
-    let dataOverride = data[key + "_override"]
-    if (dataOverride) {
-      // there is data override attribute, using this value instead
-      computed.data[key] = dataOverride
-    } else if (typeof value === "function") {
+  for (let key in data) {
+    let value = data[key]
+    //_.forEach(data, (value, key) => {
+    if (typeof key === "string" && key.endsWith("_no_cascade")) {
+      // this is an override key, computing original key value
+      key = key.split("_no_cascade")[0]
+    } else if (
+      Object.prototype.hasOwnProperty.call(data, key + "_no_cascade")
+    ) {
+      // there is a data override attribute, bail out.
+      continue
+    }
+    if (typeof value === "function") {
       // it's a function we need to compute the result
       computed.data[key] = value(options.topLevelData, config, pages)
     } else if (_.isPlainObject(value) || _.isArray(value)) {
@@ -181,8 +188,10 @@ const computePageData = (data, config, pages, options = {}) => {
         computed.data[key] = subComputed.data
         computed.pendingCount += subComputed.pendingCount
       }
+    } else {
+      computed.data[key] = value
     }
-  })
+  }
   return computed
 }
 

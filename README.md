@@ -1,4 +1,4 @@
-# kiss: keep it simple and static site generator
+# 😚 kiss: keep it simple and static site generator
 
 **Minimal, low-tech-yet-powerful static site generator**
 
