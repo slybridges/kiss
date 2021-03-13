@@ -5,27 +5,27 @@ const { getParentPage, getDescendantPages } = require("./utils")
 
 const isChild = (page, child) => child._meta.parent === page._meta.id
 
-const isDescendant = (page, descendant, pages) =>
-  isChild(page, descendant) ||
-  _.some(computeChildren(page, {}, pages), (child) =>
-    isDescendant(pages[child], descendant, pages)
-  )
+const isComputableValue = (value) =>
+  typeof value === "function" ||
+  (_.isPlainObject(value) && value._kissCheckDependencies)
 
 const countPendingDependencies = (page, pages, deps = []) => {
   let pendingCount = 0
   deps.forEach((dep) => {
     if (typeof dep === "string") {
       // assume attribute is part of the page data
-      if (typeof _.get(page, dep) === "function") {
+      let depValue = _.get(page, dep)
+      if (isComputableValue(depValue)) {
         // dependency is not yet computed
         pendingCount++
       }
     } else if (_.isArray(dep)) {
       // list of chained dependencies, we have to look into other pages
       let [data, ...restDeps] = dep
-      if (_.isArray(data)) {
+      let depValue = _.get(page, data)
+      if (_.isArray(depValue)) {
         // assume list of page ids
-        data.forEach(
+        depValue.forEach(
           (id) =>
             (pendingCount += countPendingDependencies(
               pages[id],
@@ -33,9 +33,11 @@ const countPendingDependencies = (page, pages, deps = []) => {
               restDeps
             ))
         )
+      } else if (isComputableValue(depValue)) {
+        pendingCount++
       } else {
         // assume a single page id
-        pendingCount += countPendingDependencies(pages[data], pages, restDeps)
+        pendingCount += countPendingDependencies(depValue, pages, restDeps)
       }
     } else {
       throw new Error(
@@ -67,10 +69,19 @@ const computeChildren = (page, config, pages) =>
     (child) => child._meta.id
   )
 
-const computeDescendants = (page, config, pages) =>
-  _.filter(pages, (child) => isDescendant(page, child, pages)).map(
-    (child) => child._meta.id
-  )
+const computeDescendants = (page, config, pages) => {
+  //console.time("desc")
+  //let desc = _.filter(pages, (child) => isDescendant(page, child, pages))
+  let desc = []
+  if (page._meta.children && page._meta.children.length > 0) {
+    desc = desc.concat(page._meta.children)
+    page._meta.children.forEach((id) => {
+      desc = desc.concat(computeDescendants(pages[id], config, pages))
+    })
+  }
+  //console.timeEnd("desc")
+  return desc
+}
 
 const computeDescription = (page, config) => {
   if (!page.content) {
@@ -212,6 +223,7 @@ const computeAllPagesData = (pages, config) => {
   while (round === 1 || pendingTotal > 0) {
     pendingTotal = 0
     _.forEach(computedPages, (page, key) => {
+      global.logger.log(`  Computing data for ${key}`)
       computed = computePageData(page, config, computedPages)
       computedPages[key] = computed.data
       pendingTotal += computed.pendingCount
@@ -236,34 +248,34 @@ dependencies or increase the 'maxComputingRounds' settings```
 }
 
 // load content derived from existing pages
-const computeDataViews = (siteData, config) => {
+const computeDataViews = (context, config) => {
   config.dataViews.forEach((view) => {
     const { attribute, handler, ...options } = view
     global.logger.info(
       `Computing '${attribute}' data view using '${handler.name}'`
     )
-    siteData[attribute] = handler(siteData, options, config)
+    context[attribute] = handler(context, options, config)
   })
-  return siteData
+  return context
 }
 
-const computeCategoriesDataView = (siteData, options = {}, config) => {
+const computeCategoriesDataView = (context, options = {}, config) => {
   if (!options.parent) {
     options.parent = config.contentDir
   }
   let categories = []
   _.filter(
-    siteData.pages,
+    context.pages,
     ({ _meta }) => _meta.isDirectory && _meta.parent === options.parent
   ).forEach((page) => {
     categories.push({
       name: config.libs.unslugify(page._meta.basename),
       entry: page,
-      count: getDescendantPages(page, siteData.pages, {
+      count: getDescendantPages(page, context.pages, {
         filterBy: (d) => d._meta.type === "post",
       }).length,
       children: computeCategoriesDataView(
-        siteData,
+        context,
         { ...options, parent: page._meta.id },
         config,
         page._meta.id
@@ -339,17 +351,21 @@ const topLevelPageData = {
   },
   category: computeCategory,
   description: withDependencies(computeDescription, ["content"]),
-  image: withDependencies(computeImage, ["content", "slug", "descendants"]),
+  image: withDependencies(computeImage, [
+    "content",
+    "slug",
+    "_meta.descendants",
+  ]),
   layout: computeLayout,
   slug: computeSlug,
   title: withDependencies(computeTitle, ["slug"]),
   // populated by baseLoader
   _meta: {
-    ascendants: computeAscendants,
+    ascendants: withDependencies(computeAscendants, ["_meta.parent"]),
     id: "",
     basename: "",
-    children: computeChildren,
-    descendants: computeDescendants,
+    children: withDependencies(computeChildren, ["_meta.parent"]),
+    descendants: withDependencies(computeDescendants, ["_meta.children"]),
     inputPath: "",
     isDirectory: false,
     outputPath: withDependencies(computeOutputPath, ["slug"]),

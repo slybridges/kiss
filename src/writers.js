@@ -6,10 +6,10 @@ const {
   copyFileAtPath,
 } = require("./utils.js")
 
-const collectionWriter = async (page, config, contextData) => {
-  const collection = findCollectionById(contextData.collections, page._meta.id)
+const collectionWriter = async (page, config, context) => {
+  const collection = findCollectionById(context.collections, page._meta.id)
   const content = config.libs.nunjucks.render(page.layout, {
-    ...contextData,
+    ...context,
     collection,
     ...page,
   })
@@ -20,19 +20,19 @@ const staticWriter = async ({ _meta }) => {
   return await copyFileAtPath(_meta.inputPath, _meta.outputPath)
 }
 
-const postWriter = async (page, config, contextData) => {
+const postWriter = async (page, config, context) => {
   const content = config.libs.nunjucks.render(page.layout, {
-    ...contextData,
+    ...context,
     ...page,
   })
   return await writeFileAtPath(page._meta.outputPath, content)
 }
 
-const jsonSiteWriter = async (siteData, options = {}, config) => {
+const jsonSiteWriter = async (context, options = {}, config) => {
   if (!options.target) {
     options.target = "site_data.json"
   }
-  const jsonData = JSON.stringify(siteData, null, options.space)
+  const jsonData = JSON.stringify(context, null, options.space)
   return await writeFileAtPath(
     path.join(config.publicDir, options.target),
     jsonData
@@ -42,13 +42,13 @@ const jsonSiteWriter = async (siteData, options = {}, config) => {
 const findWriter = ({ _meta }, config) =>
   config.writers.find((writer) => writer.type === _meta.type)
 
-const writeStaticPages = async (siteData, config) => {
+const writeStaticPages = async (context, config) => {
   // write pages
   await Promise.all(
-    _.map(siteData.pages, async (page) => {
+    _.map(context.pages, async (page) => {
       const writer = findWriter(page, config)
       if (writer) {
-        let { file, err } = await writer.handler(page, config, siteData)
+        let { file, err } = await writer.handler(page, config, context)
         if (err) {
           global.logger.error(`- error writing '${file}': ${err}`)
         } else {
@@ -65,7 +65,7 @@ const writeStaticPages = async (siteData, config) => {
   return await Promise.all(
     _.filter(config.writers, { type: "site" }).map(async (writer) => {
       const { type, handler, ...options } = writer //eslint-disable-line no-unused-vars
-      let { file, err } = await handler(siteData, options, config)
+      let { file, err } = await handler(context, options, config)
       if (err) {
         global.logger.error(`- error writing '${file}': ${err}`)
       } else {

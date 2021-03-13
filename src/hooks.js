@@ -3,7 +3,7 @@ const path = require("path")
 const { copySync } = require("fs-extra")
 const { execSync } = require("child_process")
 
-const runConfigHooks = (config, event, data, context) => {
+const runConfigHooks = (config, event, data) => {
   const hooks = _.get(config.hooks, event)
   if (!hooks) {
     global.logger.info(`No hooks registered for ${event}`)
@@ -11,7 +11,7 @@ const runConfigHooks = (config, event, data, context) => {
   }
   hooks.forEach((hook) => {
     if (typeof hook === "function") {
-      data = runHandlerHook(hook, {}, config, data, context)
+      data = runHandlerHook(hook, {}, config, data)
     } else {
       const { action, handler, command, ...options } = hook
       switch (action) {
@@ -22,7 +22,7 @@ const runConfigHooks = (config, event, data, context) => {
           runExecHook(command, options)
           break
         case "run":
-          data = runHandlerHook(handler, options, config, data, context)
+          data = runHandlerHook(handler, options, config, data)
           break
         default: {
           global.logger.error(`Unknown hook action: ${action}`)
@@ -54,10 +54,10 @@ const runExecHook = (command, options) => {
   }
 }
 
-const runHandlerHook = (handler, options, config, data, context) => {
+const runHandlerHook = (handler, options, config, data) => {
   global.logger.info(`Running ${handler.name}()`)
   try {
-    return handler(options, config, data, context)
+    return handler(options, config, data)
   } catch (err) {
     global.logger.error(`Error in ${handler.name}(): ${err}`)
     return data

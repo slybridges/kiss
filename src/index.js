@@ -15,7 +15,7 @@ const { writeStaticPages } = require("./writers")
 const build = async (options, config = null) => {
   console.time("Build time")
   setGlobalLogger(options.verbosity)
-  let data = {
+  let context = {
     pages: {},
     collections: {},
   }
@@ -32,35 +32,35 @@ const build = async (options, config = null) => {
 
   if (config.hooks.preLoad.length > 0) {
     global.logger.section("Running preLoad hooks")
-    data = runConfigHooks(config, "preLoad", data)
+    context = runConfigHooks(config, "preLoad", context)
   }
 
   global.logger.section(`Loading content from '${config.contentDir}'`)
-  data.pages = await loadFileContent(config)
-  data.pages = loadDerivedContent(data.pages, config)
+  context.pages = await loadFileContent(config)
+  context.pages = loadDerivedContent(context.pages, config)
 
   if (config.hooks.postLoad.length > 0) {
     global.logger.section("Running postLoad hooks")
-    data = runConfigHooks(config, "postLoad", data)
+    context = runConfigHooks(config, "postLoad", context)
   }
 
-  global.logger.section("Computing dynamic page data")
-  data.pages = computeAllPagesData(data.pages, config)
+  global.logger.section("Computing dynamic page context")
+  context.pages = computeAllPagesData(context.pages, config)
 
   global.logger.section("Computing data views")
-  data = computeDataViews(data, config)
+  context = computeDataViews(context, config)
 
   if (config.hooks.preWrite.length > 0) {
     global.logger.section("Running preWrite hooks")
-    data = runConfigHooks(config, "preWrite", data)
+    context = runConfigHooks(config, "preWrite", context)
   }
 
   global.logger.section(`Writing site to '${config.publicDir}'`)
-  await writeStaticPages(data, config)
+  await writeStaticPages(context, config)
 
   if (config.hooks.postWrite.length > 0) {
     global.logger.section("Running postWrite hooks")
-    runConfigHooks(config, "postWrite", data)
+    runConfigHooks(config, "postWrite", context)
   }
 
   global.logger.section("Build complete")
