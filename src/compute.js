@@ -73,22 +73,29 @@ const computeDescendants = (page, config, pages) =>
   )
 
 const computeDescription = (page, config) => {
-  // https://moz.com/learn/seo/meta-description
-  // Meta descriptions can be any length, but Google generally truncates snippets to ~155–160 characters.
   if (!page.content) {
     return ""
   }
   const { JSDOM } = config.libs.jsdom
   const dom = new JSDOM(page.content)
-  console.log
+  // https://moz.com/learn/seo/meta-description
+  // Meta descriptions can be any length, but Google generally truncates snippets to ~155–160 characters.
   return _.truncate(dom.window.document.body.textContent, {
     length: 160,
     separator: " ",
   })
 }
 
-const computeImage = (page, config) => {
+const computeImage = (page, config, pages) => {
+  if (typeof page.image === "string") {
+    return page.image
+  }
   if (!page.content) {
+    // check if there are descendants
+    if (page._meta.descendants && page._meta.descendants.length > 0) {
+      // return image of the first child
+      return computeImage(pages[page._meta.descendants[0]], config, pages)
+    }
     return null
   }
   const { JSDOM } = config.libs.jsdom
@@ -97,6 +104,7 @@ const computeImage = (page, config) => {
   if (!img) {
     return null
   }
+  // return the first image, as an absolute path
   return path.isAbsolute(img.src) ? img.src : path.join(page.slug, img.src)
 }
 
@@ -210,7 +218,7 @@ const computeAllPagesData = (pages, config) => {
     })
     if (pendingTotal > 0 && round + 1 > config.maxComputingRounds) {
       global.logger.error(
-        ```- Could not compute all data in ${config.maxComputingRounds} rounds. Check for circular 
+        ```- Could not compute all data in ${config.maxComputingRounds} rounds. Check for circular
 dependencies or increase the 'maxComputingRounds' settings```
       )
       break
@@ -331,7 +339,7 @@ const topLevelPageData = {
   },
   category: computeCategory,
   description: withDependencies(computeDescription, ["content"]),
-  image: withDependencies(computeImage, ["content", "slug"]),
+  image: withDependencies(computeImage, ["content", "slug", "descendants"]),
   layout: computeLayout,
   slug: computeSlug,
   title: withDependencies(computeTitle, ["slug"]),
@@ -352,9 +360,15 @@ const topLevelPageData = {
 
 module.exports = {
   computeAllPagesData,
+  computeCategory,
   computeCategoriesDataView,
   computeCollectionDataView,
   computeDataViews,
+  computeDescription,
+  computeImage,
+  computeLayout,
   topLevelPageData,
+  computeSlug,
+  computeTitle,
   withDependencies,
 }
