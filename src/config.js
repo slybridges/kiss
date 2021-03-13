@@ -64,6 +64,7 @@ const loadDefaultNunjucksFilters = (_, config) => {
 }
 
 let defaultConfig = {
+  configFile: defaultConfigFile,
   contentDir: "content",
   dateFormat: "MMMM do, yyyy 'at' hh:mm aaa",
   defaultLayout: "base.njk",
@@ -116,6 +117,7 @@ let defaultConfig = {
     { attribute: "collections", handler: computeCollectionDataView },
     { attribute: "categories", handler: computeCategoriesDataView },
   ],
+  themeDir: "theme/",
   templateDir: "theme/templates/",
   writers: [
     { type: "post", handler: postWriter },

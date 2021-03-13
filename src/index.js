@@ -103,9 +103,10 @@ const start = (options) => {
 
   setGlobalLogger(options.verbosity)
 
-  const fileWatcher = chokidar.watch(".", {
-    ignored: [path.join(config.publicDir, "**"), "node_modules", ".*"],
-  })
+  const fileWatcher = chokidar.watch(
+    [config.contentDir, config.themeDir, config.configFile],
+    { awaitWriteFinish: true }
+  )
 
   // rebuild on file changes
   fileWatcher.on(
@@ -134,6 +135,7 @@ const start = (options) => {
   //Launch Browser Sync
   bs.init({
     watch: true,
+    watchOptions: { awaitWriteFinish: true },
     server: {
       baseDir: config.publicDir,
       serveStaticOptions: {
