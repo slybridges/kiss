@@ -29,7 +29,7 @@ const loadFileContent = async (config) => {
   let pages = {}
   await Promise.all(
     config.sources
-      .filter((source) => source.source === "file")
+      .filter((source) => !source.source || source.source === "file")
       .map(async ({ match, matchOptions = {}, loader, ...options }) => {
         let fgOptions = {
           cwd: config.contentDir,
@@ -83,29 +83,29 @@ const loadDerivedContent = (pages, config) => {
 }
 
 const directoryCollectionLoader = (pathname, options, config, pages) => {
-  const parentname = path.dirname(pathname)
-  if (pages[parentname]) {
+  const parentName = path.dirname(pathname)
+  if (pages[parentName]) {
     // parent already in the collection
     return pages
   }
   let isTopLevel = true
-  const parentBasename = path.basename(parentname)
-  if (parentBasename !== parentname) {
+  const parentBasename = path.basename(parentName)
+  if (parentBasename !== parentName) {
     // there is a parent of the parent folder
     // according to our top down data cascade approach,
     // we need to compute this one first
     isTopLevel = false
-    pages = directoryCollectionLoader(parentname, options, config, pages)
+    pages = directoryCollectionLoader(parentName, options, config, pages)
   }
   let parent = baseLoader(
-    parentname,
-    { type: "collection", isDirectory: true, collectionGroup: "directory" },
+    parentName,
+    { isDirectory: true, collectionGroup: "directory" },
     isTopLevel ? config.topLevelPageData : {},
     pages
   )
 
   return _.merge({}, pages, {
-    [parentname]: parent,
+    [parentName]: parent,
   })
 }
 
@@ -115,44 +115,41 @@ const baseLoader = (inputPath, options = {}, page = {}, pages = {}) => {
   const parentData = getParentPage(pages, parent)
   let isDirectory = options.isDirectory || inputPath.endsWith("/")
   let id = inputPath
-  let type = options.type
+  let outputType = options.outputType || "HTML"
   let collectionGroup = options.collectionGroup
-  if (basename.startsWith("index.")) {
-    // directory index, replace parent and most parent _meta
-    // FIXME: how about index.jpg?
-    id = _.get(parentData, "_meta.id", "")
-    parent = _.get(parentData, "_meta.parent", "")
-    basename = _.get(parentData, "_meta.basename", "")
-    isDirectory = true
-    type = "collection"
-  } else if (basename.startsWith("post.")) {
-    // directory post, replace parent but overwrite the rest
-    // FIXME: how about post.jpg?
-    id = _.get(parentData, "_meta.id", "")
-    parent = _.get(parentData, "_meta.parent", "")
-    type = "post"
-  }
-  if (type === "collection") {
-    if (!collectionGroup) {
-    // default collection group to directory
-    collectionGroup = "directory"
+  if (outputType === "HTML") {
+    // only files converted as HTML can override
+    // they parent entry
+    if (basename.startsWith("index.")) {
+      // directory index, replace parent and most parent _meta
+      id = _.get(parentData, "_meta.id", "")
+      parent = _.get(parentData, "_meta.parent", "")
+      basename = _.get(parentData, "_meta.basename", "")
+      isDirectory = true
+    } else if (basename.startsWith("post.")) {
+      // directory post, replace parent and overwrite the rest
+      id = _.get(parentData, "_meta.id", "")
+      parent = _.get(parentData, "_meta.parent", "")
     }
-  } else {
-    // collectionGroup only applies to collection type
-    collectionGroup = null
+  }
+  if (isDirectory) {
+    if (!collectionGroup) {
+      // set default collection group to directory
+      collectionGroup = "directory"
+    }
   }
 
-  page = _.merge({}, parentData, page, {
-    _meta: {
-      id,
-      basename,
-      inputPath,
-      isDirectory,
-      parent: parent === "." ? null : parent,
-      source: options.source,
-      type,
-      collectionGroup,
-    },
+  page = { ...parentData, ...page }
+  // deep merge metadata to keep parent ones
+  page._meta = _.merge(parentData._meta, page._meta, {
+    id,
+    basename,
+    inputPath,
+    isDirectory,
+    parent: parent === "." ? null : parent,
+    source: options.source,
+    outputType,
+    collectionGroup,
   })
   return page
 }
@@ -177,7 +174,23 @@ const markdownLoader = (id, options, page) => {
   return { ...page, ...fileData.attributes, content }
 }
 
-const staticLoader = (id, options, { slug, _meta }) => ({ slug, _meta })
+const staticLoader = (id, options, { slug, _meta }) => {
+  return {
+    slug,
+    _meta: {
+      // remove relationship information
+      ..._.omit(_meta, [
+        "ascendants",
+        "children",
+        "descendants",
+        "isCollection",
+        "isPost",
+        "parent",
+      ]),
+      outputType: options.outputType || "STATIC",
+    },
+  }
+}
 
 const computeCollectionLoader = (pages, options, config) => {
   const { libs } = config
@@ -189,7 +202,7 @@ const computeCollectionLoader = (pages, options, config) => {
     options.pageData = getTopLevelData(pages, config)
   }
   if (!options.filter) {
-    options.filter = (page) => page._meta.type === "post"
+    options.filter = (page) => !!page.content //no access to isPost yet (we're pre-cascade)
   }
   if (!options.name) {
     options.name = options.groupBy
@@ -244,7 +257,7 @@ const computeCollectionLoader = (pages, options, config) => {
   // in a computed handler but outside of it
   let topLevelPage = baseLoader(
     inputPath,
-    { type: "collection", source: "computed", collectionGroup: options.name },
+    { source: "computed", collectionGroup: options.name },
     {},
     pages
   )
@@ -259,7 +272,7 @@ const computeCollectionLoader = (pages, options, config) => {
     )
     let computedPage = baseLoader(
       inputPath,
-      { type: "collection", source: "computed", collectionGroup: options.name },
+      { source: "computed", collectionGroup: options.name },
       {
         _meta: {
           children,

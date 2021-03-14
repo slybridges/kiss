@@ -19,12 +19,12 @@ const {
   staticLoader,
   computeCollectionLoader,
 } = require("./loaders")
+const { nunjucksTransform } = require("./transforms")
 const { unslugify } = require("./utils")
 const {
-  postWriter,
-  staticWriter,
-  collectionWriter,
-  jsonSiteWriter,
+  htmlPageWriter,
+  staticPageWriter,
+  jsonContextWriter,
 } = require("./writers")
 
 let defaultConfigFile = "kiss.config.js"
@@ -67,7 +67,6 @@ let defaultConfig = {
   configFile: defaultConfigFile,
   contentDir: "content",
   dateFormat: "MMMM do, yyyy 'at' hh:mm aaa",
-  defaultLayout: "base.njk",
   defaultCollectionOrderBy: "-created",
   env: process.env.NODE_ENV,
   topLevelPageData,
@@ -75,36 +74,19 @@ let defaultConfig = {
     postConfig: [loadDefaultLibs, loadDefaultNunjucksFilters],
     preLoad: [], // updates contextData
     postLoad: [], // updates contextData
-    preWrite: [], // updates contextData
     postWrite: [], // updates contextData
   },
   libs: {},
-  maxComputingRounds: 5,
+  maxComputingRounds: 10,
   publicDir: "public",
   sources: [
+    { match: ["**/*.js"], loader: jsLoader },
+    { match: ["**/*.md"], loader: markdownLoader },
+    { match: ["**/*.html"], loader: htmlLoader },
     {
-      source: "file",
-      match: ["**/*.js"],
-      loader: jsLoader,
-      type: "post",
-    },
-    {
-      source: "file",
-      match: ["**/*.md"],
-      loader: markdownLoader,
-      type: "post",
-    },
-    {
-      source: "file",
-      match: ["**/*.html"],
-      loader: htmlLoader,
-      type: "post",
-    },
-    {
-      source: "file",
       match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif"],
+      outputType: "STATIC",
       loader: staticLoader,
-      type: "static",
     },
     {
       source: "computed",
@@ -119,13 +101,17 @@ let defaultConfig = {
   ],
   themeDir: "theme/",
   templateDir: "theme/templates/",
+  transforms: [
+    { outputType: "HTML", handler: nunjucksTransform },
+    //later: { scope: "CONTEXT", handler: imageTransform },
+  ],
   writers: [
-    { type: "post", handler: postWriter },
-    { type: "static", handler: staticWriter },
-    { type: "collection", handler: collectionWriter },
+    { outputType: "HTML", handler: htmlPageWriter },
+    { outputType: "STATIC", handler: staticPageWriter },
+    //later: { outputType: "IMAGE", handler: imageWriter },
     {
-      type: "site",
-      handler: jsonSiteWriter,
+      scope: "CONTEXT",
+      handler: jsonContextWriter,
       space: 2,
     },
   ],

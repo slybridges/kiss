@@ -10,7 +10,8 @@ const {
 } = require("./compute")
 const { loadFileContent, loadDerivedContent } = require("./loaders")
 const { setGlobalLogger, unsetGlobalLogger } = require("./logger")
-const { writeStaticPages } = require("./writers")
+const { applyTransforms } = require("./transforms")
+const { writeStaticSite } = require("./writers")
 
 const build = async (options, config = null) => {
   console.time("Build time")
@@ -50,13 +51,11 @@ const build = async (options, config = null) => {
   global.logger.section("Computing data views")
   context = computeDataViews(context, config)
 
-  if (config.hooks.preWrite.length > 0) {
-    global.logger.section("Running preWrite hooks")
-    context = runConfigHooks(config, "preWrite", context)
-  }
+  global.logger.section(`Applying transforms`)
+  context = applyTransforms(context, config)
 
   global.logger.section(`Writing site to '${config.publicDir}'`)
-  await writeStaticPages(context, config)
+  await writeStaticSite(context, config)
 
   if (config.hooks.postWrite.length > 0) {
     global.logger.section("Running postWrite hooks")

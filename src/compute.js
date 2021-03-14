@@ -70,8 +70,6 @@ const computeChildren = (page, config, pages) =>
   )
 
 const computeDescendants = (page, config, pages) => {
-  //console.time("desc")
-  //let desc = _.filter(pages, (child) => isDescendant(page, child, pages))
   let desc = []
   if (page._meta.children && page._meta.children.length > 0) {
     desc = desc.concat(page._meta.children)
@@ -79,7 +77,6 @@ const computeDescendants = (page, config, pages) => {
       desc = desc.concat(computeDescendants(pages[id], config, pages))
     })
   }
-  //console.timeEnd("desc")
   return desc
 }
 
@@ -119,8 +116,20 @@ const computeImage = (page, config, pages) => {
   return path.isAbsolute(img.src) ? img.src : path.join(page.slug, img.src)
 }
 
-const computeLayout = ({ _meta }, config) =>
-  _meta.type ? `${_meta.type}.njk` : config.defaultLayout
+const computeIsCollection = ({ _meta }) =>
+  _meta.children && _meta.children.length > 0
+
+const computeIsPost = ({ content }) => !!content
+
+const computeLayout = ({ _meta }) => {
+  if (_meta.isCollection) {
+    return "collection.njk"
+  }
+  if (_meta.isPost) {
+    return "post.njk"
+  }
+  return "default.njk"
+}
 
 const computeOutputPath = ({ slug }, config) => {
   // replace top level dir (contentDir) by publicDir
@@ -137,7 +146,7 @@ const computeOutputPath = ({ slug }, config) => {
 const computeSlug = ({ _meta }, config) => {
   // remove top level dir (contentDir) and index.[ext]
   let slug = _meta.inputPath.replace(new RegExp(`^${config.contentDir}`), "")
-  if (_meta.type !== "static") {
+  if (_meta.outputType === "HTML") {
     slug = slug
       .replace(new RegExp(/\/index\.[a-z]+$/), "/")
       .replace(new RegExp(/\/post\.[a-z]+$/), "/")
@@ -223,7 +232,6 @@ const computeAllPagesData = (pages, config) => {
   while (round === 1 || pendingTotal > 0) {
     pendingTotal = 0
     _.forEach(computedPages, (page, key) => {
-      global.logger.log(`  Computing data for ${key}`)
       computed = computePageData(page, config, computedPages)
       computedPages[key] = computed.data
       pendingTotal += computed.pendingCount
@@ -272,7 +280,7 @@ const computeCategoriesDataView = (context, options = {}, config) => {
       name: config.libs.unslugify(page._meta.basename),
       entry: page,
       count: getDescendantPages(page, context.pages, {
-        filterBy: (d) => d._meta.type === "post",
+        filterBy: (d) => d._meta.isPost,
       }).length,
       children: computeCategoriesDataView(
         context,
@@ -297,8 +305,7 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
   }
   let collections = _.filter(
     pages,
-    ({ _meta }) =>
-      _meta.type === "collection" && _meta.parent === options.parent
+    ({ _meta }) => _meta.isCollection && _meta.parent === options.parent
   ).reduce((collections, page) => {
     if (!page._meta.descendants) {
       return collections
@@ -311,7 +318,7 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
         _type: "collection",
         _group: page._meta.collectionGroup,
         allPosts: getDescendantPages(page, pages, {
-          filterBy: (p) => p._meta.type === "post",
+          filterBy: (p) => p._meta.isPost,
           orderBy: options.orderBy,
         }),
         ...computeCollectionDataView(
@@ -328,7 +335,7 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
       pages[config.contentDir],
       pages,
       {
-        filterBy: (p) => p._meta.type === "post",
+        filterBy: (p) => p._meta.isPost,
         orderBy: options.orderBy,
       }
     )
@@ -356,7 +363,10 @@ const topLevelPageData = {
     "slug",
     "_meta.descendants",
   ]),
-  layout: computeLayout,
+  layout: withDependencies(computeLayout, [
+    "_meta.isCollection",
+    "_meta.isPost",
+  ]),
   slug: computeSlug,
   title: withDependencies(computeTitle, ["slug"]),
   // populated by baseLoader
@@ -367,10 +377,12 @@ const topLevelPageData = {
     children: withDependencies(computeChildren, ["_meta.parent"]),
     descendants: withDependencies(computeDescendants, ["_meta.children"]),
     inputPath: "",
+    isCollection: withDependencies(computeIsCollection, ["_meta.children"]),
     isDirectory: false,
+    isPost: withDependencies(computeIsPost, ["content"]),
     outputPath: withDependencies(computeOutputPath, ["slug"]),
     parent: null,
-    type: null,
+    outputType: null,
   },
 }
 
