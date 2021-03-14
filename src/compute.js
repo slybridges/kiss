@@ -48,15 +48,15 @@ const countPendingDependencies = (page, pages, deps = []) => {
   return pendingCount
 }
 
-const computeAscendants = ({ _meta }, config, pages) => {
+const computeAscendants = ({ _meta }, config, { pages }) => {
   if (_meta.parent) {
     const parent = getParentPage(pages, _meta.parent)
-    return [...computeAscendants(parent, config, pages), parent._meta.id]
+    return [...computeAscendants(parent, config, { pages }), parent._meta.id]
   }
   return []
 }
 
-const computeCategory = ({ _meta }, config, pages) => {
+const computeCategory = ({ _meta }, config, { pages }) => {
   if (_meta.parent) {
     const parent = getParentPage(pages, _meta.parent)
     return parent._meta.basename.replace(new RegExp(/index\.\w+$/), "")
@@ -64,17 +64,17 @@ const computeCategory = ({ _meta }, config, pages) => {
   return ""
 }
 
-const computeChildren = (page, config, pages) =>
+const computeChildren = (page, config, { pages }) =>
   _.filter(pages, (child) => isChild(page, child)).map(
     (child) => child._meta.id
   )
 
-const computeDescendants = (page, config, pages) => {
+const computeDescendants = (page, config, { pages }) => {
   let desc = []
   if (page._meta.children && page._meta.children.length > 0) {
     desc = desc.concat(page._meta.children)
     page._meta.children.forEach((id) => {
-      desc = desc.concat(computeDescendants(pages[id], config, pages))
+      desc = desc.concat(computeDescendants(pages[id], config, { pages }))
     })
   }
   return desc
@@ -94,7 +94,7 @@ const computeDescription = (page, config) => {
   })
 }
 
-const computeImage = (page, config, pages) => {
+const computeImage = (page, config, { pages }) => {
   if (typeof page.image === "string") {
     return page.image
   }
@@ -102,7 +102,7 @@ const computeImage = (page, config, pages) => {
     // check if there are descendants
     if (page._meta.descendants && page._meta.descendants.length > 0) {
       // return image of the first child
-      return computeImage(pages[page._meta.descendants[0]], config, pages)
+      return computeImage(pages[page._meta.descendants[0]], config, { pages })
     }
     return null
   }
@@ -161,7 +161,7 @@ const computeSlug = ({ _meta }, config) => {
 const computeTitle = ({ slug }, config) =>
   config.libs.unslugify(slug, { slash: " | " })
 
-const computePageData = (data, config, pages, options = {}) => {
+const computePageData = (data, config, context, options = {}) => {
   let computed = {
     data: null,
     pendingCount: 0,
@@ -189,13 +189,13 @@ const computePageData = (data, config, pages, options = {}) => {
     }
     if (typeof value === "function") {
       // it's a function we need to compute the result
-      computed.data[key] = value(options.topLevelData, config, pages)
+      computed.data[key] = value(options.topLevelData, config, context)
     } else if (_.isPlainObject(value) || _.isArray(value)) {
       if (value._kissCheckDependencies) {
         // function was wrapped using withDependencies()
         let currentPending = countPendingDependencies(
           options.topLevelData,
-          pages,
+          context.pages,
           value.deps
         )
         if (currentPending == 0) {
@@ -203,7 +203,7 @@ const computePageData = (data, config, pages, options = {}) => {
           computed.data[key] = value.handler(
             options.topLevelData,
             config,
-            pages
+            context
           )
         } else {
           // data needs other dependencies to be computed first
@@ -212,7 +212,7 @@ const computePageData = (data, config, pages, options = {}) => {
         }
       } else {
         // it's a normal object: we need to see if there is data to compute inside
-        let subComputed = computePageData(value, config, pages, options)
+        let subComputed = computePageData(value, config, context, options)
         computed.data[key] = subComputed.data
         computed.pendingCount += subComputed.pendingCount
       }
@@ -223,17 +223,16 @@ const computePageData = (data, config, pages, options = {}) => {
   return computed
 }
 
-const computeAllPagesData = (pages, config) => {
-  let computedPages = { ...pages }
+const computeAllPagesData = (context, config) => {
   let pendingTotal = 0
   let round = 1
   let computed = {}
 
   while (round === 1 || pendingTotal > 0) {
     pendingTotal = 0
-    _.forEach(computedPages, (page, key) => {
-      computed = computePageData(page, config, computedPages)
-      computedPages[key] = computed.data
+    _.forEach(context.pages, (page, key) => {
+      computed = computePageData(page, config, context)
+      context.pages[key] = computed.data
       pendingTotal += computed.pendingCount
     })
     if (pendingTotal > 0 && round + 1 > config.maxComputingRounds) {
@@ -252,7 +251,7 @@ dependencies or increase the 'maxComputingRounds' settings```
     }
     ++round
   }
-  return computedPages
+  return context
 }
 
 // load content derived from existing pages

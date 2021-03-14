@@ -8,7 +8,7 @@ const {
   computeDataViews,
   withDependencies,
 } = require("./compute")
-const { loadFileContent, loadDerivedContent } = require("./loaders")
+const { loadContent } = require("./loaders")
 const { setGlobalLogger, unsetGlobalLogger } = require("./logger")
 const { applyTransforms } = require("./transforms")
 const { writeStaticSite } = require("./writers")
@@ -37,8 +37,7 @@ const build = async (options, config = null) => {
   }
 
   global.logger.section(`Loading content from '${config.contentDir}'`)
-  context.pages = await loadFileContent(config)
-  context.pages = loadDerivedContent(context.pages, config)
+  context.pages = await loadContent(config)
 
   if (config.hooks.postLoad.length > 0) {
     global.logger.section("Running postLoad hooks")
@@ -46,7 +45,7 @@ const build = async (options, config = null) => {
   }
 
   global.logger.section("Computing dynamic page context")
-  context.pages = computeAllPagesData(context.pages, config)
+  context = computeAllPagesData(context, config)
 
   global.logger.section("Computing data views")
   context = computeDataViews(context, config)

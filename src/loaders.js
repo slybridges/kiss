@@ -24,9 +24,9 @@ const getTopLevelData = (pages, config) => {
   return topPage
 }
 
-// load content from disk
-const loadFileContent = async (config) => {
+const loadContent = async (config) => {
   let pages = {}
+  // file loaders
   await Promise.all(
     config.sources
       .filter((source) => !source.source || source.source === "file")
@@ -66,11 +66,7 @@ const loadFileContent = async (config) => {
         }
       })
   )
-  return pages
-}
-
-// load content derived from existing pages
-const loadDerivedContent = (pages, config) => {
+  // computed loaders
   let computedPages = {}
   _.filter(config.sources, (s) => s.source === "computed").forEach((source) => {
     const { loader, ...sourceOptions } = source
@@ -289,8 +285,7 @@ const computeCollectionLoader = (pages, options, config) => {
 module.exports = {
   htmlLoader,
   jsLoader,
-  loadFileContent,
-  loadDerivedContent,
+  loadContent,
   markdownLoader,
   staticLoader,
   computeCollectionLoader,
