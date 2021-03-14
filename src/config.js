@@ -5,6 +5,7 @@ const path = require("path")
 const slugify = require("slugify")
 const parseISO = require("date-fns/parseISO")
 const formatDate = require("date-fns/format")
+const formatDateISO = require("date-fns/formatISO")
 const jsdom = require("jsdom")
 
 const {
@@ -56,6 +57,13 @@ const loadDefaultNunjucksFilters = (_, config) => {
     }
     let date = typeof str === "string" ? parseISO(str) : str
     return formatDate(date, format || config.dateFormat)
+  })
+  config.libs.nunjucks.addFilter("formatDateISO", (str) => {
+    if (!str) {
+      return ""
+    }
+    let date = typeof str === "string" ? parseISO(str) : str
+    return formatDateISO(date)
   })
   config.libs.nunjucks.addFilter("unslugify", (str) =>
     config.libs.unslugify(str)
