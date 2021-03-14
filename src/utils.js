@@ -35,19 +35,18 @@ const getChildrenPages = (page, pages, filterOptions) => {
 
 const getDescendantPages = (page, pages, { filterBy, orderBy } = {}) => {
   let descendants = page._meta.descendants.map((desc) => pages[desc])
-  let reverse = false
+  let order = "asc"
   if (filterBy) {
     descendants = _.filter(descendants, filterBy)
   }
   if (orderBy) {
     if (orderBy[0] === "-") {
-      reverse = true
+      order = "desc"
       orderBy = orderBy.slice(1)
     }
-    descendants = _.orderBy(descendants, orderBy)
-    if (reverse) {
-      descendants = descendants.reverse()
-    }
+    // remove entries without the attribute by default
+    descendants = _.filter(descendants, (page) => page[orderBy] !== undefined)
+    descendants = _.orderBy(descendants, orderBy, order)
   }
   return descendants
 }
