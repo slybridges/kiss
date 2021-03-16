@@ -17,7 +17,7 @@ const log = (level, verbosity, ...args) => {
     info: { prefix: "INFO", color: chalk.blue },
     log: { prefix: "   ", color: chalk.white },
     success: { prefix: " OK ", color: chalk.bgGreen },
-    warn: { prefix: "WARN", color: chalk.bgHex("FF6600") },
+    warn: { prefix: "WARN", color: chalk.bgHex("FF6600").black },
     section: { handler: (config, ...args) => console.log(chalk.bold(...args)) },
   }
 

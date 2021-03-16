@@ -14,7 +14,7 @@
 - write your content in markdown, html, json, or javascript
 - organize your articles in folders the way you want your urls to look like (like in the good ole days!)
 - use top-down data cascade to enrich your content metadata as it is crawled
-- write small functions to compute dynamic data during data cascade (e.g. generate default title based on slug or default cover image based on content)
+- write small functions to compute dynamic data during data cascade (e.g. generate default title based on permalink or default cover image based on content)
 - easily create custom pages derived from the main data (e.g list of articles by tags or articles by author's)
 - write your site templates in [Nunjucks](https://mozilla.github.io/nunjucks/) and get access to the full site data while doing so
 - pre-compute derived data based for easy templating (e.g. compute the list of categories and subcategories for generating the navigation bar)
@@ -52,7 +52,7 @@ content/                          # this where your source content reside
 ├── blog/                         # create subfolders as you see fit to match your site URL structure.
 │   │                             # kiss automatically generates folder index pages listing all children
 │   ├── my-first-blog-post/       # content piece that is a directory with post.md/.html file inside
-│   │   ├── post.md               # generated slug will be /blog/my-first-blog-post/ (you can override it if you want)
+│   │   ├── post.md               # generated permalink will be /blog/my-first-blog-post/ (you can override it if you want)
 │   │   └── blog-post-cover.jpg   # pictures in content directory are copied as is
 │   └── another-blog-post.md      # content piece that is a single file
 └── index.js                      # index file data (.js/.md/.html) are merged with parent data and cascade to their children
@@ -88,6 +88,6 @@ NODE_ENV=production npx kiss build
 
 kiss codebase is tiny and easy to navigate:
 
-- start with `src/config.js` to get an understanding of how you can configure your project.
-- then, head over `src/index.js` `build()` method to understand the lifecycle of a build.
-- finally, head over to `src/compute.js` and scroll down to the bottom to read about the default page metadata and dynamic computations
+- start with `config/defaultConfig.js` to get an understanding of how you can configure your project.
+- then, head over `build.js` `build()` method to understand the lifecycle of a build.
+- finally, head over to `data/initialPageData.js` and scroll down to the bottom to read about the default page metadata and dynamic computations
