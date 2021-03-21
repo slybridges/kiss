@@ -12,7 +12,8 @@ const { getAbsoluteURL, sortPages, isValidURL } = require("../helpers")
 // Atom summary: https://validator.w3.org/feed/docs/atom.html
 // Atom spec: https://tools.ietf.org/html/rfc4287
 
-const defaultPageFilter = (page) => page._meta.isPost
+const defaultPageFilter = (page) =>
+  page._meta.isPost && !page.excludeFromCollection
 
 const getAbsoluteURLContent = (content, baseURL) => {
   // there are more (niche) attributes
