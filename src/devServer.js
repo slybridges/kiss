@@ -38,10 +38,6 @@ const watch = async (options = {}, config) => {
     config = loadConfig(options)
   }
 
-  if (!options.skipInitialBuild) {
-    await build(options, config)
-  }
-
   // set watches
   const fileWatcher = chokidar.watch(
     [config.dirs.content, config.dirs.theme, config.configFile],

@@ -5,7 +5,9 @@ const { setGlobalLogger } = require("../logger")
 const defaultConfig = require("./defaultConfig")
 
 const loadConfig = (options = {}) => {
-  const { configFile = defaultConfig.configFile } = options
+  // using cloneDeep here so that we get a fresh new object every time in watch mode
+  const baseConfig = _.cloneDeep(defaultConfig)
+  const { configFile = baseConfig.configFile } = options
   setGlobalLogger(options.verbosity) // loadConfig is called in devServer outside of dev
   const relativeConfigFile = path.relative(__dirname, configFile)
   let configFunc
@@ -14,8 +16,8 @@ const loadConfig = (options = {}) => {
   } catch {
     throw new Error(`No '${configFile}' config file found.`)
   }
-  let config = configFunc(defaultConfig)
-  if (configFile !== defaultConfig.configFile) {
+  let config = configFunc(baseConfig)
+  if (configFile !== baseConfig.configFile) {
     config.configFile = configFile
   }
   checkConfig(config)
