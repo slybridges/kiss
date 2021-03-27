@@ -51,7 +51,7 @@ const build = async (options = {}, config = null) => {
   context = computeDataViews(context, config)
 
   global.logger.section(`Applying transforms`)
-  context = applyTransforms(context, config)
+  context = await applyTransforms(context, config)
 
   global.logger.section(`Writing site to '${config.dirs.public}'`)
   await writeStaticSite(context, config)
@@ -84,20 +84,31 @@ module.exports = build
 
 /** Private **/
 
-const applyTransforms = (context, config) => {
+const applyTransforms = async (context, config) => {
   if (!config.transforms || config.transforms.length === 0) {
     global.logger.info(`No transform registered.`)
     return context
   }
-  config.transforms.forEach((transform) => {
+  const validScopes = [null, "PAGE", "CONTEXT"]
+  for await (let transform of config.transforms) {
     const { scope, handler, outputType, ...options } = transform
+    if (scope && !validScopes.includes(scope)) {
+      throw new Error(
+        `[applyTransforms]: invalid scope for transform ${
+          handler.name
+        }, got '${scope}'. Valid choices are ${JSON.stringify(validScopes)}`
+      )
+    }
     if (scope === "CONTEXT") {
       // global transforms
       global.logger.info(`Transforming context using ${handler.name}`)
       try {
-        context = handler(context, options, config)
-      } catch (e) {
-        global.logger.error(`Error during transform: ${e}`)
+        context = await handler(context, options, config)
+      } catch (err) {
+        global.logger.error(
+          `[${handler.name}] Error during transform:\n`,
+          err.stack
+        )
       }
     } else {
       // page transforms
@@ -109,14 +120,17 @@ const applyTransforms = (context, config) => {
           continue
         }
         try {
-          context.pages[id] = handler(page, options, config, context)
+          context.pages[id] = await handler(page, options, config, context)
           global.logger.log(`- transformed '${id}'`)
-        } catch (e) {
-          global.logger.error(`Error during transform of page '${id}': ${e}`)
+        } catch (err) {
+          global.logger.error(
+            `[${handler.name}] Error during transform of page '${id}'\n`,
+            err.stack
+          )
         }
       }
     }
-  })
+  }
   return context
 }
 
@@ -330,11 +344,11 @@ const loadContent = async (config, context) => {
             )
           } catch (err) {
             global.logger.error(
-              `- [${handler.name}] error loading '${_.get(
+              `- [${handler.name}] Error loading '${_.get(
                 page,
                 "_meta.inputPath"
               )}'\n`,
-              err
+              err.stack
             )
           }
         }
@@ -387,8 +401,11 @@ const runCopyHook = ({ from, to }, config) => {
   try {
     global.logger.info(`Copying file from '${from}' to '${publicTo}'`)
     copySync(from, publicTo)
-  } catch (err) {
-    global.logger.error(`Error copying from '${from}' to '${publicTo}': ${err}`)
+  } catch (e) {
+    global.logger.error(
+      `Error copying from '${from}' to '${publicTo}'\n`,
+      e.stack
+    )
   }
 }
 
@@ -407,7 +424,7 @@ const runHandlerHook = (handler, options, config, data) => {
   try {
     return handler(options, config, data)
   } catch (err) {
-    global.logger.error(`Error in ${handler.name}: ${err}`)
+    global.logger.error(`Error in ${handler.name}:\n`, err.stack)
     return data
   }
 }
@@ -432,7 +449,8 @@ const writeStaticSite = async (context, config) => {
           )
         } catch (err) {
           global.logger.error(
-            `- [${writer.handler.name}] error writing '${page._meta.outputPath}': ${err}`
+            `- [${writer.handler.name}] error writing '${page._meta.outputPath}'\n`,
+            err.stack
           )
         }
       } else {
@@ -457,9 +475,8 @@ const writeStaticSite = async (context, config) => {
         )
       } catch (err) {
         global.logger.error(
-          `- [${handler.name}] error writing ${
-            options.target || "file"
-          }: ${err}`
+          `- [${handler.name}] error writing ${options.target || "file"}\n`,
+          err.stack
         )
       }
     })

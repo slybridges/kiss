@@ -9,16 +9,29 @@ const {
   computeCollectionLoader,
   jsLoader,
   markdownLoader,
-  staticLoader,
   textLoader,
 } = require("../loaders")
-const { nunjucksContentTransform } = require("../transforms")
+const {
+  imageContextTransform,
+  nunjucksContentTransform,
+} = require("../transforms")
 const {
   computeCategoriesDataView,
   computeCollectionDataView,
   computeSiteLastUpdatedDataView,
 } = require("../views")
-const { htmlPageWriter, staticPageWriter } = require("../writers")
+const { htmlPageWriter, imageWriter, staticPageWriter } = require("../writers")
+
+const defaultImageFilename = (name, ext, width, preset) => {
+  let filename = name
+  if (preset && preset !== "default") {
+    filename += "_" + preset
+  }
+  if (width && width !== "original") {
+    filename += "_" + width
+  }
+  return filename + "." + ext
+}
 
 const defaultConfig = {
   addPlugin: addPlugin,
@@ -64,16 +77,26 @@ const defaultConfig = {
     postLoad: [],
     postWrite: [],
   },
+  image: {
+    active: true,
+    blur: false, // turning to true requires https://github.com/verlok/vanilla-lazyload
+    // blurWidth: 32
+    defaultWidth: 1024,
+    filename: defaultImageFilename,
+    formats: ["jpeg"], // webp, avif
+    overwrite: true, // if false, won't regenerate the image if already in public dir
+    sizes: ["(min-width: 1024px) 1024px", "100vw"],
+    widths: [320, 640, 1024, 1366, "original"],
+    // resizeOptions: { /*... any option accepted by sharp.resize()*/ }
+    // jpegOptions: { /*... any option accepted by sharp.jpeg()*/ }
+    // webpOptions: { /*... any option accepted by sharp.webp()*/ }
+    // avifOptions: { /*... any option accepted by sharp.avif()*/ }
+  },
   libs: {},
   loaders: [
     { match: ["**/*.js"], handler: jsLoader },
     { match: ["**/*.md"], handler: markdownLoader },
     { match: ["**/*.html"], handler: textLoader },
-    {
-      match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif"],
-      outputType: "STATIC",
-      handler: staticLoader,
-    },
     {
       source: "computed",
       handler: computeCollectionLoader,
@@ -81,9 +104,13 @@ const defaultConfig = {
       groupByType: "array",
     },
   ],
-  transforms: [{ outputType: "HTML", handler: nunjucksContentTransform }],
+  transforms: [
+    { outputType: "HTML", handler: nunjucksContentTransform },
+    { scope: "CONTEXT", handler: imageContextTransform },
+  ],
   writers: [
     { outputType: "HTML", handler: htmlPageWriter },
+    { outputType: "IMAGE", handler: imageWriter },
     { outputType: "STATIC", handler: staticPageWriter },
   ],
 }

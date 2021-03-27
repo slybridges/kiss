@@ -20,6 +20,28 @@ const flattenObjects = (obj, predicate) => {
   return flatArray
 }
 
+const getAbsolutePath = (pathname, basePath, options = {}) => {
+  if (typeof pathname !== "string") {
+    throw new Error(
+      `[getAbsolutePath]: expected path to be a string, got '${typeof pathname}'.`
+    )
+  }
+  if (isValidURL(pathname) || path.isAbsolute(pathname)) {
+    // don't change urls or absolute paths
+    return pathname
+  }
+  if (!isValidPath(pathname)) {
+    if (options.throwIfInvalid) {
+      throw new Error(`[getAbsolutePath]: Path '${pathname}' is invalid`)
+    }
+    return pathname
+  }
+  if (!isValidPath(basePath)) {
+    throw new Error(`[getAbsolutePath]: basePath '${basePath}' is invalid`)
+  }
+  return path.join(basePath, pathname)
+}
+
 const getAbsoluteURL = (url = "", baseURL) => {
   if (isValidURL(url)) {
     // already absolute
@@ -91,6 +113,16 @@ const getParentPage = (pages, id) => {
 
 const isChild = (page, child) => child._meta.parent === page._meta.id
 
+const isValidPath = (path) => {
+  if (typeof path !== "string") {
+    throw new Error(
+      `[isValidPath]: expected path to be a string, got '${typeof path}'.`
+    )
+  }
+  const invalidPathPrefixes = ["#", "mailto:", "tel:"]
+  return !_.some(invalidPathPrefixes, (prefix) => path.startsWith(prefix))
+}
+
 const isValidURL = (url) => {
   try {
     return !!new URL(url)
@@ -144,6 +176,7 @@ const sortPages = (pages, sortBy, { skipUndefinedSort } = {}) => {
 
 module.exports = {
   findCollectionById,
+  getAbsolutePath,
   getAbsoluteURL,
   getChildrenPages,
   getDescendantPages,
