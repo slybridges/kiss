@@ -20,7 +20,7 @@ const {
   computeCollectionDataView,
   computeSiteLastUpdatedDataView,
 } = require("../views")
-const { htmlPageWriter, imageWriter, staticPageWriter } = require("../writers")
+const { htmlWriter, imageWriter, staticWriter } = require("../writers")
 
 const defaultImageFilename = (name, ext, width, preset) => {
   let filename = name
@@ -109,9 +109,9 @@ const defaultConfig = {
     { scope: "CONTEXT", handler: imageContextTransform },
   ],
   writers: [
-    { outputType: "HTML", handler: htmlPageWriter },
+    { outputType: "HTML", handler: htmlWriter },
     { outputType: "IMAGE", handler: imageWriter },
-    { outputType: "STATIC", handler: staticPageWriter },
+    { outputType: "STATIC", handler: staticWriter },
   ],
 }
 

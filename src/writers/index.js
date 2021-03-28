@@ -1,15 +1,15 @@
-const htmlPageWriter = require("./htmlPageWriter")
+const htmlWriter = require("./htmlWriter")
 const imageWriter = require("./imageWriter")
 const jsonContextWriter = require("./jsonContextWriter")
 const rssContextWriter = require("./rssContextWriter")
 const sitemapContextWriter = require("./sitemapContextWriter")
-const staticPageWriter = require("./staticPageWriter")
+const staticWriter = require("./staticWriter")
 
 module.exports = {
-  htmlPageWriter,
+  htmlWriter,
   imageWriter,
   jsonContextWriter,
   rssContextWriter,
   sitemapContextWriter,
-  staticPageWriter,
+  staticWriter,
 }
