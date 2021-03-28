@@ -51,6 +51,7 @@ const imageContextTransform = async (context, options, config) => {
       const url = new URL(content)
       const imgPath = decodeURI(url.pathname)
       const imageDetails = await getImageDetails(imgPath, id, context, config)
+      context.pages[imgPath] = imageDetails
       if (!imageDetails._meta.is404) {
         const newPathname = getDefaultDerivative(imageDetails).permalink
         $(selector).attr("content", new URL(newPathname, url.origin))
