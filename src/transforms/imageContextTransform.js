@@ -5,59 +5,60 @@ const sharp = require("sharp")
 
 const { getAbsolutePath, isValidURL } = require("../helpers")
 
-const imageContextTransform = async (context, options, config) => {
-  if (!options.namespace) {
-    options.namespace = "images"
-  }
+const META_SELECTORS = [
+  "meta[property='og:image']",
+  "meta[property='og:image:secure_url']",
+  "meta[property='twitter:image']",
+]
 
+const imageContextTransform = async (context, options, config) => {
   for (let [id, page] of Object.entries(context.pages)) {
     if (!page._html || !page.permalink) {
       continue
     }
     const $ = cheerio.load(page._html)
-    await Promise.all(
-      $("img").map(async (i, img) => {
-        let src = decodeURI($(img).attr("src"))
-        if (!img.attribs.alt) {
-          global.logger.warn(
-            `Image '${src}' on page '${page._meta.outputPath}' as no 'alt' attribute.`
-          )
-        }
-        let imgPath = getAbsolutePath(src, page.permalink, {
-          throwIfInvalid: true,
-        })
-        if (!context.pages[imgPath]) {
-          global.logger.log(`- image found: '${imgPath}'`)
-          const blur = config.image.blur || false
-          context.pages[imgPath] = {
-            blur,
-            defaultWidth: config.image.defaultWidth || config.image.widths[0],
-            defaultFormat:
-              config.image.defaultFormat || config.image.formats[0],
-            derivatives: [],
-            formats: config.image.formats,
-            permalink: imgPath, // original permalink
-            permalinkDir: path.dirname(imgPath),
-            sizes: config.image.sizes || [],
-            sources: [],
-            _meta: await getImageMetadata(imgPath, blur, config),
-          }
-          if (!context.pages[imgPath]._meta.is404) {
-            context.pages[imgPath].derivatives = getDerivatives(
-              context.pages[imgPath],
-              config
-            )
-          }
-        }
-        context.pages[imgPath].sources.push(id)
-        if (!context.pages[imgPath]._meta.is404) {
-          $(img).replaceWith(
-            getImageTag($(img).clone(), context.pages[imgPath])
-          )
-          context.pages[id]._html = $.html()
-        }
+    // images in <img> tag
+    let imagesPromises = $("img").map(async (i, img) => {
+      let src = decodeURI($(img).attr("src"))
+      if (!img.attribs.alt) {
+        global.logger.warn(
+          `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`
+        )
+      }
+      let imgPath = getAbsolutePath(src, page.permalink, {
+        throwIfInvalid: true,
       })
-    )
+      const imageDetails = await getImageDetails(imgPath, id, context, config)
+      context.pages[imgPath] = imageDetails
+      if (!imageDetails._meta.is404) {
+        $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
+        context.pages[id]._html = $.html()
+      }
+    })
+
+    // <meta> selectors
+    let metaPromises = META_SELECTORS.map(async (selector) => {
+      const content = $(selector).attr("content")
+      if (!content) {
+        return
+      }
+      if (!isValidURL(content)) {
+        global.logger.warn(
+          `Image URL '${content}' in meta ${selector} on page '${page._meta.outputPath}' is not a valid URL.`
+        )
+        return
+      }
+      const url = new URL(content)
+      const imgPath = decodeURI(url.pathname)
+      const imageDetails = await getImageDetails(imgPath, id, context, config)
+      if (!imageDetails._meta.is404) {
+        const newPathname = getDefaultDerivative(imageDetails).permalink
+        $(selector).attr("content", new URL(newPathname, url.origin))
+        context.pages[id]._html = $.html()
+      }
+    })
+
+    await Promise.all([...imagesPromises, ...metaPromises])
   }
   return context
 }
@@ -73,6 +74,29 @@ const getBase64LowResData = async (sharpImage, config) => {
     .blur()
     .toBuffer()
   return `data:image/png;base64,${buffer.toString("base64")}`
+}
+
+const getDefaultDerivative = (page) => {
+  const { defaultFormat, defaultWidth, derivatives } = page
+  if (!defaultFormat) {
+    throw new Error(
+      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultFormat'.`
+    )
+  }
+  if (!defaultWidth) {
+    throw new Error(
+      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultWidth'.`
+    )
+  }
+  if (!derivatives.length === 0) {
+    throw new Error(
+      `[getDefaultDerivative] page '${page._meta.id}' does not have any derivative.`
+    )
+  }
+  const derivative = derivatives.find(
+    (d) => d.format === defaultFormat && d.width === defaultWidth
+  )
+  return derivative ? derivative : derivatives[derivatives.length - 1]
 }
 
 const getDerivatives = (page, config) => {
@@ -110,20 +134,44 @@ const getDerivatives = (page, config) => {
   return derivatives
 }
 
+const getImageDetails = async (imgPath, sourceId, context, config) => {
+  const blur = config.image.blur || false
+  let details = {}
+  if (!context.pages[imgPath]) {
+    global.logger.log(`- image found: '${imgPath}'`)
+    details = {
+      blur,
+      defaultWidth: config.image.defaultWidth || config.image.widths[0],
+      defaultFormat: config.image.defaultFormat || config.image.formats[0],
+      derivatives: [],
+      formats: config.image.formats,
+      permalink: imgPath, // original permalink
+      permalinkDir: path.dirname(imgPath),
+      sizes: config.image.sizes || [],
+      sources: [],
+      _meta: await getImageMetadata(imgPath, blur, config),
+    }
+    if (!details._meta.is404) {
+      details.derivatives = getDerivatives(details, config)
+    }
+  } else {
+    details = context.pages[imgPath]
+  }
+  details.sources.push(sourceId)
+  return details
+}
+
 const getImageTag = (imgNode, page) => {
   const $ = cheerio.load("")
   const srcset = getSrcset(page.derivatives, "jpeg")
+  const attrPrefix = page.blur ? "data-" : ""
   if (page.blur) {
     $(imgNode).addClass("lazy")
     $(imgNode).attr("src", page._meta.lowResImage)
-    $(imgNode).attr("data-sizes", getSizes(page.sizes))
-    $(imgNode).attr("data-src", getSrc(page.derivatives, page.defaultWidth))
-    $(imgNode).attr("data-srcset", srcset)
-  } else {
-    $(imgNode).attr("sizes", getSizes(page.sizes))
-    $(imgNode).attr("src", getSrc(page.derivatives, page.defaultWidth))
-    $(imgNode).attr("srcset", srcset)
   }
+  $(imgNode).attr(attrPrefix + "src", getDefaultDerivative(page).permalink)
+  $(imgNode).attr(attrPrefix + "srcset", srcset)
+  $(imgNode).attr(attrPrefix + "sizes", getSizes(page.sizes))
   if (_.isEqual(page.formats, ["jpeg"])) {
     return imgNode
   }
@@ -131,8 +179,8 @@ const getImageTag = (imgNode, page) => {
   const picture = $("<picture></picture>")
   for (const format of page.formats.filter((f) => f !== "jpeg")) {
     const source = $("<source/>")
-    $(source).attr("data-sizes", getSizes(page.sizes))
-    $(source).attr("data-srcset", getSrcset(page.derivatives, format))
+    $(source).attr(attrPrefix + "sizes", getSizes(page.sizes))
+    $(source).attr(attrPrefix + "srcset", getSrcset(page.derivatives, format))
     $(source).attr("type", "image/" + format)
     $(picture).append(source)
   }
@@ -168,7 +216,7 @@ const getImageMetadata = async (imgPath, blur, config) => {
     }
   } catch (err) {
     global.logger.error(
-      `[getImageMetadata] Error getting image metadata for ${imgPath}\n`,
+      `[getImageMetadata] Error getting image metadata for ${srcPath}\n`,
       err.stack
     )
     meta.is404 = true
@@ -177,11 +225,6 @@ const getImageMetadata = async (imgPath, blur, config) => {
 }
 
 const getSizes = (sizes) => sizes.join(", ")
-
-const getSrc = (derivatives, defaultWidth, defaultFormat) =>
-  derivatives.find(
-    (d) => d.format === defaultFormat && d.width === defaultWidth
-  )
 
 const getSrcset = (derivatives, format) =>
   derivatives
