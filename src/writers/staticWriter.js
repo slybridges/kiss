@@ -1,7 +1,7 @@
 const { copy } = require("fs-extra")
 
-const staticPageWriter = async ({ _meta }) => {
+const staticWriter = async ({ _meta }) => {
   return copy(_meta.inputPath, _meta.outputPath)
 }
 
-module.exports = staticPageWriter
+module.exports = staticWriter

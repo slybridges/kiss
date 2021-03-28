@@ -1,6 +1,6 @@
 const { outputFile } = require("fs-extra")
 
-const htmlPageWriter = async ({ _html, _meta }) => {
+const htmlWriter = async ({ _html, _meta }) => {
   if (!_html) {
     global.logger.warn(
       `Page '${_meta.inputPath}' has no _html content. Skipping write.`
@@ -10,4 +10,4 @@ const htmlPageWriter = async ({ _html, _meta }) => {
   return outputFile(_meta.outputPath, _html)
 }
 
-module.exports = htmlPageWriter
+module.exports = htmlWriter
