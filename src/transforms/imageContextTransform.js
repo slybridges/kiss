@@ -28,7 +28,13 @@ const imageContextTransform = async (context, options, config) => {
       let imgPath = getAbsolutePath(src, page.permalink, {
         throwIfInvalid: true,
       })
-      const imageDetails = await getImageDetails(imgPath, id, context, config)
+      const imageDetails = await getImageDetails(
+        imgPath,
+        id,
+        context,
+        options,
+        config
+      )
       context.pages[imgPath] = imageDetails
       if (!imageDetails._meta.is404) {
         $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
@@ -50,7 +56,13 @@ const imageContextTransform = async (context, options, config) => {
       }
       const url = new URL(content)
       const imgPath = decodeURI(url.pathname)
-      const imageDetails = await getImageDetails(imgPath, id, context, config)
+      const imageDetails = await getImageDetails(
+        imgPath,
+        id,
+        context,
+        options,
+        config
+      )
       context.pages[imgPath] = imageDetails
       if (!imageDetails._meta.is404) {
         const newPathname = getDefaultDerivative(imageDetails).permalink
@@ -68,10 +80,10 @@ module.exports = imageContextTransform
 
 /** Private **/
 
-const getBase64LowResData = async (sharpImage, config) => {
-  const resizeOptions = config.image.resizeOptions || {}
+const getBase64LowResData = async (sharpImage, options) => {
+  const resizeOptions = options.resizeOptions || {}
   const buffer = await sharpImage
-    .resize({ ...resizeOptions, width: config.image.blurWidth || 32 })
+    .resize({ ...resizeOptions, width: options.blurWidth })
     .blur()
     .toBuffer()
   return `data:image/png;base64,${buffer.toString("base64")}`
@@ -100,16 +112,16 @@ const getDefaultDerivative = (page) => {
   return derivative ? derivative : derivatives[derivatives.length - 1]
 }
 
-const getDerivatives = (page, config) => {
+const getDerivatives = (page, options, config) => {
   let derivatives = []
-  for (const format of config.image.formats) {
-    const resizeOptions = config.image.resizeOptions || {}
-    for (const width of config.image.widths) {
-      const filename = config.image.filename(page._meta.name, format, width)
+  for (const format of options.formats) {
+    const resizeOptions = options.resizeOptions || {}
+    for (const width of options.widths) {
+      const filename = options.filename(page._meta.name, format, width)
       const permalink = path.join(page.permalinkDir, filename)
       let derivative = {
         format,
-        formatOptions: config.image[format + "Options"] || {},
+        formatOptions: options[format + "Options"] || {},
         outputPath: path.join(config.dirs.public, permalink),
         permalink,
         width,
@@ -135,25 +147,24 @@ const getDerivatives = (page, config) => {
   return derivatives
 }
 
-const getImageDetails = async (imgPath, sourceId, context, config) => {
-  const blur = config.image.blur || false
+const getImageDetails = async (imgPath, sourceId, context, options, config) => {
   let details = {}
   if (!context.pages[imgPath]) {
-    global.logger.log(`- image found: '${imgPath}'`)
+    global.logger.log(`- [imageContextTransform] image found: '${imgPath}'`)
     details = {
-      blur,
-      defaultWidth: config.image.defaultWidth || config.image.widths[0],
-      defaultFormat: config.image.defaultFormat || config.image.formats[0],
+      blur: options.blur,
+      defaultWidth: options.defaultWidth || options.widths[0],
+      defaultFormat: options.defaultFormat || options.formats[0],
       derivatives: [],
-      formats: config.image.formats,
+      formats: options.formats,
       permalink: imgPath, // original permalink
       permalinkDir: path.dirname(imgPath),
-      sizes: config.image.sizes || [],
+      sizes: options.sizes || [],
       sources: [],
-      _meta: await getImageMetadata(imgPath, blur, config),
+      _meta: await getImageMetadata(imgPath, options, config),
     }
     if (!details._meta.is404) {
-      details.derivatives = getDerivatives(details, config)
+      details.derivatives = getDerivatives(details, options, config)
     }
   } else {
     details = context.pages[imgPath]
@@ -189,7 +200,7 @@ const getImageTag = (imgNode, page) => {
   return picture
 }
 
-const getImageMetadata = async (imgPath, blur, config) => {
+const getImageMetadata = async (imgPath, options, config) => {
   const { ext, name } = path.parse(imgPath)
   const srcPath = path.join(config.dirs.content, imgPath)
   const outputPath = path.join(config.dirs.public, imgPath)
@@ -212,8 +223,8 @@ const getImageMetadata = async (imgPath, blur, config) => {
       height,
       width,
     }
-    if (blur) {
-      meta.lowResImage = await getBase64LowResData(image, config)
+    if (options.blur) {
+      meta.lowResImage = await getBase64LowResData(image, options)
     }
   } catch (err) {
     global.logger.error(

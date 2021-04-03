@@ -2,13 +2,13 @@ const sharp = require("sharp")
 const path = require("path")
 const { ensureDir, pathExists } = require("fs-extra")
 
-const imageWriter = async (page, config) => {
+const imageWriter = async (page, options) => {
   // load
   let sourceImage = sharp(page._meta.inputPath)
   return Promise.all(
     page.derivatives.map(async (derivative) => {
       let image = sourceImage.clone()
-      if (!config.image.overwrite) {
+      if (!options.overwrite) {
         if (await pathExists(derivative.outputPath)) {
           return
         }

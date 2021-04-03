@@ -36,7 +36,9 @@ const build = async (options = {}, config = null) => {
     context = runConfigHooks(config, "preLoad", context)
   }
 
-  global.logger.section(`Loading content from '${config.dirs.content}'`)
+  global.logger.section(
+    `Loading content from '${config.dirs.content}' directory`
+  )
   context.pages = await loadContent(config, context)
 
   if (config.hooks.postLoad.length > 0) {
@@ -53,7 +55,7 @@ const build = async (options = {}, config = null) => {
   global.logger.section(`Applying transforms`)
   context = await applyTransforms(context, config)
 
-  global.logger.section(`Writing site to '${config.dirs.public}'`)
+  global.logger.section(`Writing site to '${config.dirs.public}' directory`)
   await writeStaticSite(context, config)
 
   if (config.hooks.postWrite.length > 0) {
@@ -91,7 +93,12 @@ const applyTransforms = async (context, config) => {
   }
   const validScopes = [null, "PAGE", "CONTEXT"]
   for await (let transform of config.transforms) {
-    const { scope, handler, outputType, ...options } = transform
+    const { scope, handler, outputType, namespace, ...rest } = transform
+    const options = namespace ? _.get(config, namespace, {}) : rest
+    if ("active" in options && !options.active) {
+      global.logger.log(`- [${handler.name}]: transform not active. Skipping.`)
+      continue
+    }
     if (scope && !validScopes.includes(scope)) {
       throw new Error(
         `[applyTransforms]: invalid scope for transform ${
@@ -101,7 +108,9 @@ const applyTransforms = async (context, config) => {
     }
     if (scope === "CONTEXT") {
       // global transforms
-      global.logger.info(`Transforming context using ${handler.name}`)
+      const message =
+        options.description || `Transforming context using ${handler.name}`
+      global.logger.info(message)
       try {
         context = await handler(context, options, config)
       } catch (err) {
@@ -112,16 +121,17 @@ const applyTransforms = async (context, config) => {
       }
     } else {
       // page transforms
-      global.logger.info(
+      const message =
+        options.description ||
         `Transforming ${outputType || "all"} pages using ${handler.name}`
-      )
+      global.logger.info(message)
       for (let [id, page] of Object.entries(context.pages)) {
         if (outputType && page._meta.outputType !== outputType) {
           continue
         }
         try {
           context.pages[id] = await handler(page, options, config, context)
-          global.logger.log(`- transformed '${id}'`)
+          global.logger.log(`- [${handler.name}] transformed '${id}'`)
         } catch (err) {
           global.logger.error(
             `[${handler.name}] Error during transform of page '${id}'\n`,
@@ -137,10 +147,10 @@ const applyTransforms = async (context, config) => {
 // load content derived from existing pages
 const computeDataViews = (context, config) => {
   config.dataViews.forEach((view) => {
-    const { attribute, handler, ...options } = view
-    global.logger.info(
-      `Computing '${attribute}' data view using ${handler.name}`
-    )
+    const { attribute, description, handler, ...options } = view
+    const message =
+      description || `Computing '${attribute}' data view using ${handler.name}`
+    global.logger.info(message)
     _.set(context, attribute, handler(context, options, config))
   })
   return context
@@ -310,7 +320,14 @@ const loadContent = async (config, context) => {
   await Promise.all(
     config.loaders
       .filter((loader) => !loader.source || loader.source === "file")
-      .map(async ({ match, matchOptions = {}, handler, ...options }) => {
+      .map(async ({ handler, namespace, ...loaderOptions }) => {
+        const { description, match, matchOptions = {}, ...options } = namespace
+          ? _.get(config, namespace, {})
+          : loaderOptions
+        if ("active" in options && !options.active) {
+          global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
+          return
+        }
         let fgOptions = {
           cwd: config.dirs.content,
           markDirectories: true,
@@ -318,9 +335,12 @@ const loadContent = async (config, context) => {
           ...matchOptions,
         }
         let files = fg.stream(match, fgOptions)
-        global.logger.info(
-          `Loading files matching ${match} using ${handler.name}`
-        )
+        const message =
+          description ||
+          `Loading files matching ${JSON.stringify(match)} using ${
+            handler.name
+          }`
+        global.logger.info(message)
         for await (const file of files) {
           let pathname = path.join(config.dirs.content, file.path)
           let page = {}
@@ -357,8 +377,10 @@ const loadContent = async (config, context) => {
   // computed loaders
   _.filter(config.loaders, (loader) => loader.source === "computed").forEach(
     (loader) => {
-      const { handler, ...options } = loader
-      global.logger.info(`Loading computed pages using ${handler.name}`)
+      const { description, handler, ...options } = loader
+      const message =
+        description || `Loading computed pages using ${handler.name}`
+      global.logger.info(message)
       pages = handler(pages, options, config)
     }
   )
@@ -396,10 +418,11 @@ const runConfigHooks = (config, event, data) => {
   return data
 }
 
-const runCopyHook = ({ from, to }, config) => {
+const runCopyHook = ({ from, to, description }, config) => {
   const publicTo = path.join(config.dirs.public, to)
+  const message = description || `Copying file from '${from}' to '${publicTo}'`
+  global.logger.info(message)
   try {
-    global.logger.info(`Copying file from '${from}' to '${publicTo}'`)
     copySync(from, publicTo)
   } catch (e) {
     global.logger.error(
@@ -410,7 +433,8 @@ const runCopyHook = ({ from, to }, config) => {
 }
 
 const runExecHook = (command, options) => {
-  global.logger.info(`Executing ${command}`)
+  const message = options.description || `Executing ${command}`
+  global.logger.info(message)
   try {
     const res = execSync(command, options).toString()
     global.logger.log(res)
@@ -420,7 +444,8 @@ const runExecHook = (command, options) => {
 }
 
 const runHandlerHook = (handler, options, config, data) => {
-  global.logger.info(`Running ${handler.name}`)
+  const message = options.description || `Running ${handler.name}`
+  global.logger.info(message)
   try {
     return handler(options, config, data)
   } catch (err) {
@@ -442,8 +467,10 @@ const writeStaticSite = async (context, config) => {
         (writer) => writer.outputType === page._meta.outputType
       )
       if (writer) {
+        const { handler, namespace, ...rest } = writer
+        const options = namespace ? _.get(config, namespace, {}) : rest
         try {
-          await writer.handler(page, config, context)
+          await handler(page, options, config, context)
           global.logger.log(
             `- [${writer.handler.name}] wrote '${page._meta.outputPath}'`
           )
@@ -467,7 +494,12 @@ const writeStaticSite = async (context, config) => {
   global.logger.info("Writing context-based pages")
   return await Promise.all(
     contextWriters.map(async (writer) => {
-      const { scope, handler, ...options } = writer //eslint-disable-line no-unused-vars
+      const { handler, namespace, ...rest } = writer
+      const options = namespace ? _.get(config, namespace, {}) : rest
+      if ("active" in options && !options.active) {
+        global.logger.log(`- [${handler.name}]: writer not active. Skipping.`)
+        return
+      }
       try {
         await handler(context, options, config)
         global.logger.log(

@@ -4,7 +4,7 @@ const _ = require("lodash")
 const path = require("path")
 const xml = require("xml")
 
-const defaultPageFilter = (page) => page._meta.outputType === "HTML"
+// reference documentation: https://www.sitemaps.org/protocol.html
 
 const pageObject = (page, options, config) => {
   let lastMod =
@@ -41,29 +41,13 @@ const pageObject = (page, options, config) => {
   }
 }
 
-const sitemapContextWriter = async (context, options = {}, config) => {
-  options = _.merge(
-    {
-      // reference documentation: https://www.sitemaps.org/protocol.html
-      changeFreq: {
-        home: "weekly",
-        post: "weekly",
-        collection: "weekly",
-      },
-      priority: {
-        home: 1.0,
-        post: 0.8,
-        collection: 0.5,
-      },
-      target: "sitemap.xml",
-      pageFilter: defaultPageFilter,
-      xmlOptions: {
-        declaration: true,
-        indent: config.env === "production" ? null : "  ",
-      },
-    },
-    options
-  )
+const sitemapContextWriter = async (context, options, config) => {
+  if (!options.target) {
+    global.logger.warn(
+      `[sitemapContextWriter]: No 'target' passed in options. Skipping write.`
+    )
+    return
+  }
   const pages = _.filter(context.pages, options.pageFilter)
   const sitemapObject = {
     urlset: [

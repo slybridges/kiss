@@ -6,9 +6,9 @@ const {
   loadUnslugify,
 } = require("../libs")
 const {
-  computeCollectionLoader,
   jsLoader,
   markdownLoader,
+  staticLoader,
   textLoader,
 } = require("../loaders")
 const {
@@ -20,7 +20,14 @@ const {
   computeCollectionDataView,
   computeSiteLastUpdatedDataView,
 } = require("../views")
-const { htmlWriter, imageWriter, staticWriter } = require("../writers")
+const {
+  htmlWriter,
+  imageWriter,
+  jsonContextWriter,
+  rssContextWriter,
+  sitemapContextWriter,
+  staticWriter,
+} = require("../writers")
 
 const defaultImageFilename = (name, ext, width, preset) => {
   let filename = name
@@ -32,6 +39,8 @@ const defaultImageFilename = (name, ext, width, preset) => {
   }
   return filename + "." + ext
 }
+
+const env = process.env.NODE_ENV
 
 const defaultConfig = {
   addPlugin: addPlugin,
@@ -65,23 +74,75 @@ const defaultConfig = {
     theme: "theme",
     template: "theme/templates",
   },
-  env: process.env.NODE_ENV,
+  env: env,
   hooks: {
     loadLibs: [
-      loadNunjucks,
-      loadSlugify,
-      loadUnslugify,
-      loadNunjucksFilters.allFilters,
+      { action: "run", handler: loadNunjucks, description: "Loading Nunjucks" },
+      { action: "run", handler: loadSlugify, description: "Loading Slugify" },
+      {
+        action: "run",
+        handler: loadUnslugify,
+        description: "Loading Unslugify",
+      },
+      {
+        action: "run",
+        handler: loadNunjucksFilters.allFilters,
+        description: "Loading additional Nunjucks filters",
+      },
     ],
     preLoad: [],
     postLoad: [],
     postWrite: [],
   },
+  libs: {},
+  loaders: [
+    { handler: jsLoader, namespace: "jsLoader" },
+    { handler: markdownLoader, namespace: "markdownLoader" },
+    { handler: staticLoader, namespace: "staticLoader" },
+    { handler: textLoader, namespace: "textLoader" },
+    // Use the example below to create computed tag pages from the "tags" attribute found in pages
+    // {
+    //   source: "computed",
+    //   handler: computeCollectionLoader,
+    //   groupBy: "tags",
+    //   groupByType: "array",
+    // },
+  ],
+  transforms: [
+    {
+      outputType: "HTML",
+      handler: nunjucksContentTransform,
+      description: "Applying Nunjucks templates to content",
+    },
+    {
+      scope: "CONTEXT",
+      namespace: "image",
+      handler: imageContextTransform,
+    },
+  ],
+  writers: [
+    { outputType: "HTML", handler: htmlWriter },
+    { outputType: "IMAGE", handler: imageWriter, namespace: "image" },
+    { outputType: "STATIC", handler: staticWriter },
+    { scope: "CONTEXT", handler: jsonContextWriter, namespace: "sitedata" },
+    { scope: "CONTEXT", handler: sitemapContextWriter, namespace: "sitemap" },
+    { scope: "CONTEXT", handler: rssContextWriter, namespace: "rss" },
+  ],
+  // Namespaced options
+  jsLoader: { match: ["**/*.js"] },
+  markdownLoader: { match: ["**/*.md"] },
+  textLoader: { match: ["**/*.html"] },
+  staticLoader: {
+    active: false, // set true or remove line to use the staticLoader
+    // if not using the image optimization module, you can copy images with:
+    // match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif"],
+  },
   image: {
     active: true,
     blur: false, // turning to true requires https://github.com/verlok/vanilla-lazyload
-    // blurWidth: 32
+    blurWidth: 32,
     defaultWidth: 1024,
+    description: "Optimizing images",
     filename: defaultImageFilename,
     formats: ["jpeg"], // webp, avif
     overwrite: true, // if false, won't regenerate the image if already in public dir
@@ -92,27 +153,40 @@ const defaultConfig = {
     // webpOptions: { /*... any option accepted by sharp.webp()*/ }
     // avifOptions: { /*... any option accepted by sharp.avif()*/ }
   },
-  libs: {},
-  loaders: [
-    { match: ["**/*.js"], handler: jsLoader },
-    { match: ["**/*.md"], handler: markdownLoader },
-    { match: ["**/*.html"], handler: textLoader },
-    {
-      source: "computed",
-      handler: computeCollectionLoader,
-      groupBy: "tags",
-      groupByType: "array",
+  rss: {
+    active: true,
+    target: "feed.xml",
+    pageFilter: (page) => page._meta.isPost && !page.excludeFromCollection,
+    xmlOptions: {
+      declaration: true,
+      indent: env === "production" ? null : "  ",
     },
-  ],
-  transforms: [
-    { outputType: "HTML", handler: nunjucksContentTransform },
-    { scope: "CONTEXT", handler: imageContextTransform },
-  ],
-  writers: [
-    { outputType: "HTML", handler: htmlWriter },
-    { outputType: "IMAGE", handler: imageWriter },
-    { outputType: "STATIC", handler: staticWriter },
-  ],
+  },
+  sitedata: {
+    active: true,
+    omit: ["_html"], // keys to omits from context
+    space: env === "production" ? null : 2,
+    target: env === "production" ? process.env.KISS_DATA_FILE : "sitedata.json",
+  },
+  sitemap: {
+    active: true,
+    changeFreq: {
+      home: "weekly",
+      post: "weekly",
+      collection: "weekly",
+    },
+    priority: {
+      home: 1.0,
+      post: 0.8,
+      collection: 0.5,
+    },
+    target: "sitemap.xml",
+    pageFilter: (page) => page._meta.outputType === "HTML",
+    xmlOptions: {
+      declaration: true,
+      indent: env === "production" ? null : "  ",
+    },
+  },
 }
 
 module.exports = defaultConfig

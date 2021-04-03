@@ -12,9 +12,6 @@ const { getAbsoluteURL, sortPages, isValidURL } = require("../helpers")
 // Atom summary: https://validator.w3.org/feed/docs/atom.html
 // Atom spec: https://tools.ietf.org/html/rfc4287
 
-const defaultPageFilter = (page) =>
-  page._meta.isPost && !page.excludeFromCollection
-
 const getAbsoluteURLContent = (content, baseURL) => {
   // there are more (niche) attributes
   // see https://github.com/posthtml/posthtml-urls/blob/master/lib/defaultOptions.js
@@ -131,17 +128,12 @@ const pageObject = (page, options, config) => {
 }
 
 const rssContextWriter = async (context, options, config) => {
-  options = _.merge(
-    {
-      target: "feed.xml",
-      pageFilter: defaultPageFilter,
-      xmlOptions: {
-        declaration: true,
-        indent: config.env === "production" ? null : "  ",
-      },
-    },
-    options
-  )
+  if (!options.target) {
+    global.logger.warn(
+      `[rssContextWriter]: No 'target' passed in options. Skipping write.`
+    )
+    return
+  }
   const feedURL = new URL(options.target, context.site.url)
   let updatedDate = context.site.lastUpdated
   if (updatedDate) {
