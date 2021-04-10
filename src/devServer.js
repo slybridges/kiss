@@ -34,6 +34,8 @@ const start = async (options) => {
 }
 
 const watch = async (options = {}, config) => {
+  options.watchMode = true
+
   if (!config) {
     config = loadConfig(options)
   }

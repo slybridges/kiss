@@ -70,8 +70,9 @@ const build = async (options = {}, config = null) => {
     global.logger.error(
       `${errorCount} error(s) and ${warningCount} warning(s) found.`
     )
-    console.timeEnd("Build time")
     if (!watchMode) {
+      console.timeEnd("Build time")
+      global.logger.info("Exiting build with errors.")
       process.exit(1)
     }
   } else if (warningCount > 0) {
