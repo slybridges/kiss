@@ -47,10 +47,14 @@ const defaultConfig = {
   configFile: "kiss.config.js",
   context: {
     site: {
-      country: "US", // ISO_3166-1_alpha-2 for locale computation along with language
       description: null,
       image: null, // default cover image
-      language: "en", // ISO 639-1: https://www.w3schools.com/tags/ref_language_codes.asp
+      // locale: needs to be an array because some expect en-US and others (looking at you, OpenGraph) en_US
+      // - first element is the language as per ISO 639-1: https://www.w3schools.com/tags/ref_language_codes.asp
+      // - second optional element is the territory, for example ISO_3166-1_alpha-2 code
+      // Use {{ site.locale|join('_') }} to generate the locate in templates
+      // Use the getLocale() helper to generate the locale string in the code
+      locale: ["en", "US"],
       title: null,
       url: null, // website target url is mandatory
     },
@@ -145,7 +149,7 @@ const defaultConfig = {
     description: "Optimizing images",
     filename: defaultImageFilename,
     formats: ["jpeg"], // webp, avif
-    overwrite: true, // if false, won't regenerate the image if already in public dir
+    overwrite: env === "production", // if false, won't regenerate the image if already in public dir
     sizes: ["(min-width: 1024px) 1024px", "100vw"],
     widths: [320, 640, 1024, 1366, "original"],
     // resizeOptions: { /*... any option accepted by sharp.resize()*/ }

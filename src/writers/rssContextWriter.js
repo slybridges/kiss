@@ -5,7 +5,12 @@ const cheerio = require("cheerio")
 const path = require("path")
 const xml = require("xml")
 
-const { getAbsoluteURL, sortPages, isValidURL } = require("../helpers")
+const {
+  getAbsoluteURL,
+  getLocale,
+  sortPages,
+  isValidURL,
+} = require("../helpers")
 
 // Although called RSS, this is really an Atom feed generator
 // See https://www.saksoft.com/blog/rss-vs-atom/ for more infos
@@ -146,12 +151,13 @@ const rssContextWriter = async (context, options, config) => {
       updatedDate = null
     }
   }
-  let lang = context.site.language
-  if (context.site.country) {
-    lang += "-" + context.site.country
-  }
   let feedObject = [
-    { _attr: { xmlns: "http://www.w3.org/2005/Atom", "xml:lang": lang } },
+    {
+      _attr: {
+        xmlns: "http://www.w3.org/2005/Atom",
+        "xml:lang": getLocale(context),
+      },
+    },
     { generator: "kiss RSS plugin" },
     { id: context.site.url },
     { title: context.site.title },

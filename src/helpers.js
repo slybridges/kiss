@@ -84,6 +84,20 @@ const getDescendantPages = (
   return descendants
 }
 
+const getLocale = (context, sep = "-") => {
+  const locale = _.get(context, "site.locale")
+  if (!locale) {
+    return ""
+  }
+  if (_.isArray(locale)) {
+    return locale.join(sep)
+  }
+  if (typeof locale == "string") {
+    return locale
+  }
+  return ""
+}
+
 const getPageId = (inputPath, config) => {
   let topDir = config.dirs.content
   if (config.dirs.content.endsWith("/")) {
@@ -180,6 +194,7 @@ module.exports = {
   getAbsoluteURL,
   getChildrenPages,
   getDescendantPages,
+  getLocale,
   getPageId,
   getParentId,
   getParentPage,
