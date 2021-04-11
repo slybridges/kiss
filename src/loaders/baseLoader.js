@@ -6,6 +6,9 @@ const { getPageId, getParentId, getParentPage } = require("../helpers")
 const baseLoader = (inputPath, options, page, pages, config) => {
   let parentId = getParentId(inputPath, config)
   let basename = path.basename(inputPath)
+  if (basename === config.dirs.content) {
+    basename = ""
+  }
   const parentData = parentId ? getParentPage(pages, parentId) : {}
   let isDirectory = options.isDirectory || inputPath.endsWith("/")
   let id = options.id || getPageId(inputPath, config)
