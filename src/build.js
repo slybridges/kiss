@@ -335,14 +335,17 @@ const loadContent = async (config, context) => {
           stats: true,
           ...matchOptions,
         }
-        let files = fg.stream(match, fgOptions)
         const message =
           description ||
           `Loading files matching ${JSON.stringify(match)} using ${
             handler.name
           }`
         global.logger.info(message)
-        for await (const file of files) {
+        let files = fg.sync(match, fgOptions)
+        // sort files to make sure index files are loaded first
+        // and respect the data cascade principle
+        files = sortIndexFirst(files)
+        for (const file of files) {
           let pathname = path.join(config.dirs.content, file.path)
           let page = {}
           try {
@@ -442,6 +445,14 @@ const runExecHook = (command, options) => {
   } catch (err) {
     global.logger.error(err)
   }
+}
+
+const sortIndexFirst = (files) => {
+  return files.sort((fileA, fileB) => {
+    const isAIndexFile = fileA.name.startsWith("index.")
+    const isBIndexFile = fileB.name.startsWith("index.")
+    return isBIndexFile && !isAIndexFile ? 1 : -1
+  })
 }
 
 const runHandlerHook = (handler, options, config, data) => {
