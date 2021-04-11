@@ -169,7 +169,9 @@ const getImageDetails = async (imgPath, sourceId, context, options, config) => {
   } else {
     details = context.pages[imgPath]
   }
-  details.sources.push(sourceId)
+  if (details.sources.indexOf(sourceId) === -1) {
+    details.sources.push(sourceId)
+  }
   return details
 }
 
