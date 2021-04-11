@@ -2,6 +2,9 @@ const _ = require("lodash")
 const path = require("path")
 
 const findCollectionById = (collections, id) => {
+  if (id === ".") {
+    return collections
+  }
   const flatCollections = flattenObjects(
     collections,
     (v) => v._type === "collection"
