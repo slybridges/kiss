@@ -150,7 +150,7 @@ const isValidURL = (url) => {
 
 // hacked from https://github.com/jonschlinkert/omit-deep
 const omitDeep = (object, keys) => {
-  if (!_.isObject(object)) {
+  if (!_.isObject(object) || object instanceof Date) {
     return object
   }
   if (Array.isArray(object)) {
