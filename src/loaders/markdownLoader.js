@@ -1,9 +1,8 @@
 const textLoader = require("./textLoader")
-const marked = require("marked")
 
-const markdownLoader = (id, options, page) => {
+const markdownLoader = (id, options, page, _, config) => {
   const fileData = textLoader(id, options, page)
-  const content = marked(fileData.content)
+  const content = config.libs.marked(fileData.content)
   return { ...page, ...fileData, content }
 }
 

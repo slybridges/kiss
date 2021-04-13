@@ -361,7 +361,7 @@ const loadContent = async (config, context) => {
             // load base data including _meta infos and based on ParentData
             page = baseLoader(pathname, options, page, pages, config)
             // load content specific data
-            page = handler(pathname, options, page, context)
+            page = handler(pathname, options, page, context, config)
             pages[page._meta.id] = page
             global.logger.log(
               `- [${handler.name}] loaded '${page._meta.inputPath}'`

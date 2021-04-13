@@ -11,6 +11,8 @@ const allFilters = (_, config) => {
   }
   config = formatDate(_, config)
   config = formatDateISO(_, config)
+  config = markdown(_, config)
+  config = markdownInline(_, config)
   config = unslugify(_, config)
   return config
 }
@@ -37,6 +39,22 @@ const formatDateISO = (_, config) => {
   return config
 }
 
+const markdown = (_, config) => {
+  const safe = config.libs.nunjucks.getFilter("safe")
+  config.libs.nunjucks.addFilter("markdown", (str) =>
+    safe(config.libs.marked(str))
+  )
+  return config
+}
+
+const markdownInline = (_, config) => {
+  const safe = config.libs.nunjucks.getFilter("safe")
+  config.libs.nunjucks.addFilter("markdownInline", (str) =>
+    safe(config.libs.marked.parseInline(str))
+  )
+  return config
+}
+
 const unslugify = (_, config) => {
   config.libs.nunjucks.addFilter("unslugify", (str) =>
     config.libs.unslugify(str)
@@ -48,5 +66,7 @@ module.exports = {
   allFilters,
   formatDate,
   formatDateISO,
+  markdown,
+  markdownInline,
   unslugify,
 }

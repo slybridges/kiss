@@ -1,5 +1,6 @@
 const { initialPageData } = require("../data")
 const {
+  loadMarked,
   loadNunjucks,
   loadNunjucksFilters,
   loadSlugify,
@@ -81,7 +82,16 @@ const defaultConfig = {
   env: env,
   hooks: {
     loadLibs: [
-      { action: "run", handler: loadNunjucks, description: "Loading Nunjucks" },
+      {
+        action: "run",
+        handler: loadMarked,
+        description: "Loading Marked (markdown processing lib)",
+      },
+      {
+        action: "run",
+        handler: loadNunjucks,
+        description: "Loading Nunjucks (template processing lib)",
+      },
       { action: "run", handler: loadSlugify, description: "Loading Slugify" },
       {
         action: "run",
