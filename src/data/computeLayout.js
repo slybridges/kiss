@@ -1,9 +1,9 @@
 const computeLayout = ({ _meta }) => {
-  if (_meta.isCollection) {
-    return "collection.njk"
-  }
   if (_meta.isPost) {
     return "post.njk"
+  }
+  if (_meta.isCollection) {
+    return "collection.njk"
   }
   return "default.njk"
 }
