@@ -42,7 +42,12 @@ const watch = async (options = {}, config) => {
 
   // set watches
   const fileWatcher = chokidar.watch(
-    [config.dirs.content, config.dirs.theme, config.configFile],
+    [
+      config.dirs.content,
+      config.dirs.theme,
+      config.configFile,
+      ...config.dirs.watchExtra,
+    ],
     { awaitWriteFinish: true }
   )
 

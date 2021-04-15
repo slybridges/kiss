@@ -78,6 +78,7 @@ const defaultConfig = {
     public: "public",
     theme: "theme",
     template: "theme/templates",
+    watchExtra: [], // additional paths to watch for change in watch mode
   },
   env: env,
   hooks: {
