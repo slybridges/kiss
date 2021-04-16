@@ -41,7 +41,7 @@ module.exports = computeCollectionDataView
 
 const getAllPosts = (page, pages, config) =>
   getDescendantPages(page, pages, {
-    filterBy: (p) => p._meta.isPost && !p.excludeFromCollection,
+    filterBy: (p) => p._meta.isPost && p.permalink && !p.excludeFromCollection,
     sortBy: page.sortCollectionBy || config.defaults.sortCollectionBy,
     skipUndefinedSort: true,
   })

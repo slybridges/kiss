@@ -474,28 +474,29 @@ const writeStaticSite = async (context, config) => {
         global.logger.log(
           `- Page '${page._meta.id}' has no permalink. Skipping.`
         )
-      }
-      const writer = config.writers.find(
-        (writer) => writer.outputType === page._meta.outputType
-      )
-      if (writer) {
-        const { handler, namespace, ...rest } = writer
-        const options = namespace ? _.get(config, namespace, {}) : rest
-        try {
-          await handler(page, options, config, context)
-          global.logger.log(
-            `- [${writer.handler.name}] wrote '${page._meta.outputPath}'`
-          )
-        } catch (err) {
-          global.logger.error(
-            `- [${writer.handler.name}] error writing '${page._meta.outputPath}'\n`,
-            err.stack
+      } else {
+        const writer = config.writers.find(
+          (writer) => writer.outputType === page._meta.outputType
+        )
+        if (writer) {
+          const { handler, namespace, ...rest } = writer
+          const options = namespace ? _.get(config, namespace, {}) : rest
+          try {
+            await handler(page, options, config, context)
+            global.logger.log(
+              `- [${writer.handler.name}] wrote '${page._meta.outputPath}'`
+            )
+          } catch (err) {
+            global.logger.error(
+              `- [${writer.handler.name}] error writing '${page._meta.outputPath}'\n`,
+              err.stack
+            )
+          }
+        } else {
+          global.logger.warn(
+            `- no writer for type '${page._meta.outputType}' found for '${page._meta.inputPath}'. Skipping.`
           )
         }
-      } else {
-        global.logger.warn(
-          `- no writer for type '${page._meta.outputType}' found for '${page._meta.inputPath}'. Skipping.`
-        )
       }
     })
   )

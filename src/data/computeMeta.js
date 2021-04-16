@@ -48,6 +48,9 @@ const computeIsPost = ({ content }) => !!content
 computeIsPost.kissDependencies = ["content"]
 
 const computeOutputPath = ({ permalink }, config) => {
+  if (!permalink) {
+    return null
+  }
   // replace top level dir (dirs.content) by dirs.public
   let outputPath = path.join(config.dirs.public, permalink)
   if (outputPath.endsWith("/")) {
