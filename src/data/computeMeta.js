@@ -38,14 +38,14 @@ const computeDescendants = (page, config, { pages }, rootCall = true) => {
 }
 computeDescendants.kissDependencies = ["_meta.children"]
 
-const computeIsCollection = ({ _meta }) =>
-  _meta.children && _meta.children.length > 0
+const computeIsCollection = ({ isCollection, _meta }) =>
+  isCollection || (_meta.children && _meta.children.length > 0)
 
-computeIsCollection.kissDependencies = ["_meta.children"]
+computeIsCollection.kissDependencies = ["isCollection", "_meta.children"]
 
-const computeIsPost = ({ content }) => !!content
+const computeIsPost = ({ content, isPost }) => isPost || !!content
 
-computeIsPost.kissDependencies = ["content"]
+computeIsPost.kissDependencies = ["content", "isPost"]
 
 const computeOutputPath = ({ permalink }, config) => {
   if (!permalink) {
