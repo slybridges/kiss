@@ -41,7 +41,7 @@ const formatDateISO = (_, config) => {
 
 const markdown = (_, config) => {
   const safe = config.libs.nunjucks.getFilter("safe")
-  config.libs.nunjucks.addFilter("markdown", (str) =>
+  config.libs.nunjucks.addFilter("markdown", (str = "") =>
     safe(config.libs.marked(str))
   )
   return config
@@ -49,7 +49,7 @@ const markdown = (_, config) => {
 
 const markdownInline = (_, config) => {
   const safe = config.libs.nunjucks.getFilter("safe")
-  config.libs.nunjucks.addFilter("markdownInline", (str) =>
+  config.libs.nunjucks.addFilter("markdownInline", (str = "") =>
     safe(config.libs.marked.parseInline(str))
   )
   return config
