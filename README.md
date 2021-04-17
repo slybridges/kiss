@@ -9,9 +9,16 @@
   </a>
 </p>
 
-## kiss features
+## What kiss is
 
-How it works:
+- **Low-tech**: VanillaJS, small codebase, little abstractions.
+- **Minimal**: No framework, no code transpiler, little dependencies.
+- **Batteries included**: Comes out of the box with everything you need to make an SEO friendly website
+- **Developer friendly**: `kiss start` will watch your changes and reload the browser after every build so that you can iterate quickly.
+- **Powerful**: Dynamic data computations, page data cascade and derived content generation.
+- **Extensible**: Easily add support for more content types, dynamic computations, writers, post build commands via hooks, etc.
+
+## How it works:
 
 - Write your content in markdown, html, json, or javascript
 - Organize your articles in folders the way you want your urls to look like (like in the good ole days!)
@@ -21,21 +28,13 @@ How it works:
 - Create custom pages derived from the main data (e.g list of articles by tags or articles by author's)
 - Pre-compute derived data views based (e.g. compute the list of categories and subcategories for generating the navigation bar)
 
-kiss will automatically make you site SEO friendly by default:
+kiss will automatically make your site SEO friendly by default:
 
-- Optimizes images and make them responsive
-- Default data cascade makes it easy to generate meta and Open Graph tags
-- Generates RSS feed
-- Generates sitemap
-- Generates a dump of your full site as JSON for debug or to implement actions via workers (like site search)
-
-## What kiss is
-
-- **Low-tech**: VanillaJS, small codebase, little abstractions.
-- **Minimal**: No framework, no code transpiler, little dependencies.
-- **Developer friendly**: `kiss start` will watch your changes and reload the browser after every build so that you can iterate quickly.
-- **Powerful**: Dynamic data computations, page data cascade and derived content generation.
-- **Extensible**: Easily add support for more content types, dynamic computations, writers, post build commands via hooks, etc.
+- Optimize images and make them responsive
+- Data cascade makes it trivial to generate meta and Open Graph tags
+- Generate RSS feed
+- Generate sitemap
+- Generate a dump of your full site as JSON for debug or to implement actions via workers (like site search)
 
 ## DISCLAIMER
 
