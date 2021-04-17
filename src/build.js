@@ -195,6 +195,10 @@ const computePageData = (data, config, context, options = {}) => {
       }
       if (currentPending == 0) {
         computed.data[key] = value(options.topLevelData, config, context)
+        if (typeof computed.data[key] === "function") {
+          // function returned another function. we'll need another round
+          computed.pendingCount += 1
+        }
       } else {
         // data needs other dependencies to be computed first
         computed.pendingCount += currentPending
@@ -451,6 +455,11 @@ const sortIndexFirst = (files) => {
   return files.sort((fileA, fileB) => {
     const isAIndexFile = fileA.name.startsWith("index.")
     const isBIndexFile = fileB.name.startsWith("index.")
+    if (isAIndexFile && isBIndexFile) {
+      // both are indexes
+      // return the shortest path first to respect data cascade
+      return fileB.path.length < fileA.path.length ? 1 : -1
+    }
     return isBIndexFile && !isAIndexFile ? 1 : -1
   })
 }
