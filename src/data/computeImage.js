@@ -14,7 +14,7 @@ const computeImage = (
   }
   if (!page.content) {
     // check if there are descendants
-    if (!page._meta.descendants || page._meta.descendants === 0) {
+    if (!page._meta.descendants || page._meta.descendants.length === 0) {
       return setDefaultImage ? site.image : null
     }
     // return the first image it finds
