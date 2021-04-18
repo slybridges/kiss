@@ -1,6 +1,6 @@
 {
   "name": "@slybridges/kiss",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Keep It Simple and Static site generator",
   "main": "src/index.js",
   "bin": {
