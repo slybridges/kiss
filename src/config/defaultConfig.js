@@ -8,6 +8,7 @@ const {
 } = require("../libs")
 const {
   jsLoader,
+  jsonLoader,
   markdownLoader,
   staticLoader,
   textLoader,
@@ -112,6 +113,7 @@ const defaultConfig = {
   libs: {},
   loaders: [
     { handler: jsLoader, namespace: "jsLoader" },
+    { handler: jsonLoader, namespace: "jsonLoader" },
     { handler: markdownLoader, namespace: "markdownLoader" },
     { handler: staticLoader, namespace: "staticLoader" },
     { handler: textLoader, namespace: "textLoader" },
@@ -145,6 +147,7 @@ const defaultConfig = {
   ],
   // Namespaced options
   jsLoader: { match: ["**/*.js"] },
+  jsonLoader: { match: ["**/*.json"] },
   markdownLoader: { match: ["**/*.md"] },
   textLoader: { match: ["**/*.html"] },
   staticLoader: {
