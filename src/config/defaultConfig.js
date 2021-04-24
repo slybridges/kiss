@@ -174,7 +174,8 @@ const defaultConfig = {
   rss: {
     active: true,
     target: "feed.xml",
-    pageFilter: (page) => page._meta.isPost && !page.excludeFromCollection,
+    pageFilter: (page) =>
+      page.url && page._meta.isPost && !page.excludeFromCollection,
     xmlOptions: {
       declaration: true,
       indent: env === "production" ? null : "  ",
@@ -199,7 +200,7 @@ const defaultConfig = {
       collection: 0.5,
     },
     target: "sitemap.xml",
-    pageFilter: (page) => page._meta.outputType === "HTML",
+    pageFilter: (page) => page.url && page._meta.outputType === "HTML",
     xmlOptions: {
       declaration: true,
       indent: env === "production" ? null : "  ",
