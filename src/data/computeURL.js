@@ -1,4 +1,7 @@
 const computeURL = ({ permalink }, config, context) => {
+  if (!permalink) {
+    return null
+  }
   if (!context.site.url) {
     return permalink
   }
