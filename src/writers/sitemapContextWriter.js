@@ -33,7 +33,7 @@ const pageObject = (page, options, config) => {
   }
   return {
     url: [
-      { loc: page.permalink },
+      { loc: page.url },
       { lastmod: lastMod },
       { changefreq: changeFreq },
       { priority: priority.toFixed(1) },
