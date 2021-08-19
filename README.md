@@ -42,7 +42,7 @@ Concept is being tuned until reaching v1. Things might break. Use at your own ri
 
 ## Requirements
 
-Node 10 or above.
+Node 12 or above.
 
 ## Quick start
 
