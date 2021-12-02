@@ -1,4 +1,4 @@
-const marked = require("marked")
+const { marked } = require("marked")
 
 const loadMarked = (_, config) => {
   config.libs.marked = marked
