@@ -29,9 +29,15 @@ const getAbsolutePath = (pathname, basePath, options = {}) => {
       `[getAbsolutePath]: expected path to be a string, got '${typeof pathname}'.`
     )
   }
-  if (isValidURL(pathname) || path.isAbsolute(pathname)) {
-    // don't change urls or absolute paths
+  if (isValidURL(pathname)) {
+    // don't change urls
     return pathname
+  }
+  if (path.isAbsolute(pathname)) {
+    // prefix absolute paths with absoluteBase, if any
+    return options.absoluteBase
+      ? path.join(options.absoluteBase, pathname)
+      : pathname
   }
   if (!isValidPath(pathname)) {
     if (options.throwIfInvalid) {
@@ -85,6 +91,25 @@ const getDescendantPages = (
     descendants = sortPages(descendants, sortBy, { skipUndefinedSort })
   }
   return descendants
+}
+
+/** Computes the input path based on the permalink by checking if the parent
+ *  had a permalink different than their input path */
+const getInputPath = (permalink, pages, baseContentPath) => {
+  const pathPbject = path.parse(permalink)
+  // search if a have a parent corresponding to this permalink
+  const parent = _.find(
+    pages,
+    (page) => page.permalink === pathPbject.dir + "/"
+  )
+  if (!parent) {
+    // no result: assume inputPath same as permalink
+    return path.join(baseContentPath, permalink)
+  }
+  return path.join(
+    path.dirname(parent._meta.inputPath), // inputPath of parent's dir
+    pathPbject.base // filename
+  )
 }
 
 const getLocale = (context, sep = "-") => {
@@ -197,6 +222,7 @@ module.exports = {
   getAbsoluteURL,
   getChildrenPages,
   getDescendantPages,
+  getInputPath,
   getLocale,
   getPageId,
   getParentId,

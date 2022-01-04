@@ -3,7 +3,12 @@ const cheerio = require("cheerio")
 const path = require("path")
 const sharp = require("sharp")
 
-const { getAbsolutePath, isValidURL } = require("../helpers")
+const {
+  getAbsolutePath,
+  getInputPath,
+  getPageId,
+  isValidURL,
+} = require("../helpers")
 
 const META_SELECTORS = [
   "meta[property='og:image']",
@@ -25,17 +30,25 @@ const imageContextTransform = async (context, options, config) => {
           `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`
         )
       }
-      let imgPath = getAbsolutePath(src, page.permalink, {
+      const imgPermalink = getAbsolutePath(src, page.permalink, {
         throwIfInvalid: true,
       })
+      const imgInputPath = getInputPath(
+        imgPermalink,
+        context.pages,
+        config.dirs.content
+      )
+      const imgId = getPageId(imgInputPath, config)
       const imageDetails = await getImageDetails(
-        imgPath,
+        imgInputPath,
+        imgPermalink,
+        imgId,
         id,
         context,
         options,
         config
       )
-      context.pages[imgPath] = imageDetails
+      context.pages[imgId] = imageDetails
       if (!imageDetails._meta.is404) {
         $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
         context.pages[id]._html = $.html()
@@ -55,15 +68,23 @@ const imageContextTransform = async (context, options, config) => {
         return
       }
       const url = new URL(content)
-      const imgPath = decodeURI(url.pathname)
+      const imgPermalink = decodeURI(url.pathname)
+      const imgInputPath = getInputPath(
+        imgPermalink,
+        context.pages,
+        config.dirs.content
+      )
+      const imgId = getPageId(imgInputPath, config)
       const imageDetails = await getImageDetails(
-        imgPath,
+        imgInputPath,
+        imgPermalink,
+        imgId,
         id,
         context,
         options,
         config
       )
-      context.pages[imgPath] = imageDetails
+      context.pages[imgId] = imageDetails
       if (!imageDetails._meta.is404) {
         const newPathname = getDefaultDerivative(imageDetails).permalink
         $(selector).attr("content", new URL(newPathname, url.origin))
@@ -147,27 +168,37 @@ const getDerivatives = (page, options, config) => {
   return derivatives
 }
 
-const getImageDetails = async (imgPath, sourceId, context, options, config) => {
+const getImageDetails = async (
+  inputPath,
+  permalink,
+  id,
+  sourceId,
+  context,
+  options,
+  config
+) => {
   let details = {}
-  if (!context.pages[imgPath]) {
-    global.logger.log(`- [imageContextTransform] image found: '${imgPath}'`)
+  if (!context.pages[id]) {
+    global.logger.log(
+      `- [imageContextTransform] new image found: '${inputPath}'`
+    )
     details = {
       blur: options.blur,
       defaultWidth: options.defaultWidth || options.widths[0],
       defaultFormat: options.defaultFormat || options.formats[0],
       derivatives: [],
       formats: options.formats,
-      permalink: imgPath, // original permalink
-      permalinkDir: path.dirname(imgPath),
+      permalink,
+      permalinkDir: path.dirname(permalink),
       sizes: options.sizes || [],
       sources: [],
-      _meta: await getImageMetadata(imgPath, options, config),
+      _meta: await getImageMetadata(inputPath, permalink, id, options, config),
     }
     if (!details._meta.is404) {
       details.derivatives = getDerivatives(details, options, config)
     }
   } else {
-    details = context.pages[imgPath]
+    details = context.pages[id]
   }
   if (details.sources.indexOf(sourceId) === -1) {
     details.sources.push(sourceId)
@@ -202,22 +233,21 @@ const getImageTag = (imgNode, page) => {
   return picture
 }
 
-const getImageMetadata = async (imgPath, options, config) => {
-  const { ext, name } = path.parse(imgPath)
-  const srcPath = path.join(config.dirs.content, imgPath)
-  const outputPath = path.join(config.dirs.public, imgPath)
+const getImageMetadata = async (inputPath, permalink, id, options, config) => {
+  const { ext, name } = path.parse(inputPath)
+  const outputPath = path.join(config.dirs.public, permalink)
   let meta = {
     basename: name + ext,
     ext,
-    id: imgPath,
-    inputPath: srcPath,
-    isURL: isValidURL(imgPath),
+    id,
+    inputPath,
+    isURL: isValidURL(permalink),
     name,
     outputPath, // output path of original file
     outputType: "IMAGE",
   }
   try {
-    const image = sharp(srcPath)
+    const image = sharp(inputPath)
     const { format, width, height } = await image.metadata()
     meta = {
       ...meta,
@@ -230,7 +260,7 @@ const getImageMetadata = async (imgPath, options, config) => {
     }
   } catch (err) {
     global.logger.error(
-      `[getImageMetadata] Error getting image metadata for ${srcPath}\n`,
+      `[getImageMetadata] Error getting image metadata for ${inputPath}\n`,
       err.stack
     )
     meta.is404 = true
