@@ -1,6 +1,5 @@
 const cheerio = require("cheerio")
-const path = require("path")
-const { isValidURL } = require("../helpers")
+const { getAbsolutePath } = require("../helpers")
 
 const computeImage = (
   page,
@@ -8,47 +7,58 @@ const computeImage = (
   { pages, site },
   { setDefaultImage = true } = {}
 ) => {
+  // needed as computeImage is called recursively
   if (typeof page.image === "string") {
-    // needed as computeImage is called recursively
-    return page.image
+    return getImagePermalink(
+      page.image,
+      page.permalink,
+      setDefaultImage,
+      site.image
+    )
   }
   if (!page.content) {
-    // check if there are descendants
+    // Search in descendants
     if (!page._meta.descendants || page._meta.descendants.length === 0) {
       return setDefaultImage ? site.image : null
     }
     // return the first image it finds
-    let id = page._meta.descendants.find((id) =>
-      computeImage(
-        pages[id],
+    for (const id of page._meta.descendants) {
+      const descendant = pages[id]
+      let image = computeImage(
+        descendant,
         config,
         { pages, site },
         { setDefaultImage: false }
       )
-    )
-    if (id) {
-      return computeImage(
-        pages[id],
-        config,
-        { pages, site },
-        { setDefaultImage: false }
-      )
+      if (image) {
+        // found an image in descendants: break for loop
+        // no need to call getImagePermalink() here, it would have been called in recursive call
+        return image
+      }
     }
+    // no result anywhere
     return setDefaultImage ? site.image : null
   }
   // searches for an img tag in content
   const $ = cheerio.load(page.content)
   const src = $("img").first().attr("src")
-  if (!src) {
-    return setDefaultImage ? site.image : null
-  }
-  if (isValidURL(src)) {
-    return src
-  }
-  // return the image, as an absolute path
-  return path.isAbsolute(src) ? src : path.join(page.permalink, src)
+  return getImagePermalink(src, page.permalink, setDefaultImage, site.image)
 }
 
 computeImage.kissDependencies = ["content", "permalink", "_meta.descendants"]
 
 module.exports = computeImage
+
+/** private */
+
+const getImagePermalink = (
+  src,
+  pagePermalink,
+  setDefaultImage,
+  defaultImage
+) => {
+  if (!src) {
+    return setDefaultImage ? defaultImage : null
+  }
+  return getAbsolutePath(src, pagePermalink, { throwIfInvalid: true })
+}
