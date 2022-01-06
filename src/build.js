@@ -152,7 +152,14 @@ const computeDataViews = (context, config) => {
     const message =
       description || `Computing '${attribute}' data view using ${handler.name}`
     global.logger.info(message)
-    _.set(context, attribute, handler(context, options, config))
+    try {
+      _.set(context, attribute, handler(context, options, config))
+    } catch (err) {
+      global.logger.error(
+        `[${handler.name}] Error during computing data view for '${attribute}'\n`,
+        err.stack
+      )
+    }
   })
   return context
 }
@@ -224,7 +231,14 @@ const computeAllPagesData = (context, config) => {
   while (round === 1 || pendingTotal > 0) {
     pendingTotal = 0
     _.forEach(context.pages, (page, key) => {
-      computed = computePageData(page, config, context)
+      try {
+        computed = computePageData(page, config, context)
+      } catch (err) {
+        global.logger.error(
+          `[computePageData] Error during computing page data for page id '${page._meta.id}'\n`,
+          err.stack
+        )
+      }
       context.pages[key] = computed.data
       pendingTotal += computed.pendingCount
     })
@@ -326,9 +340,12 @@ const loadContent = async (config, context) => {
     config.loaders
       .filter((loader) => !loader.source || loader.source === "file")
       .map(async ({ handler, namespace, ...loaderOptions }) => {
-        const { description, match, matchOptions = {}, ...options } = namespace
-          ? _.get(config, namespace, {})
-          : loaderOptions
+        const {
+          description,
+          match,
+          matchOptions = {},
+          ...options
+        } = namespace ? _.get(config, namespace, {}) : loaderOptions
         if ("active" in options && !options.active) {
           global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
           return
