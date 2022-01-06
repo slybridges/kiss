@@ -1,6 +1,7 @@
 const parseISO = require("date-fns/parseISO")
 const _formatDate = require("date-fns/format")
 const _formatDateISO = require("date-fns/formatISO")
+const locales = require("date-fns/locale")
 
 const allFilters = (_, config) => {
   if (!config.libs.nunjucks) {
@@ -23,7 +24,15 @@ const formatDate = (_, config) => {
       return ""
     }
     let date = typeof str === "string" ? parseISO(str) : str
-    return _formatDate(date, format || config.defaults.dateFormat)
+    const fullLocale = config.context.site.locale.join("")
+    const shortLocale = config.context.site.locale[0]
+    let locale = locales["en"]
+    if (locales[fullLocale]) {
+      locale = locales[fullLocale]
+    } else if (locales[shortLocale]) {
+      locale = locales[shortLocale]
+    }
+    return _formatDate(date, format || config.defaults.dateFormat, { locale })
   })
   return config
 }
