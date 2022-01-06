@@ -12,10 +12,7 @@ const computeCollectionLoader = (pages, options, config) => {
   options.pageData = options.pageData || pages["."]
   options.filter = options.filter || ((page) => !!page.content) //no access to isPost yet (we're pre-cascade)
   options.name = options.name || options.groupBy
-  let baseLink = path.join(
-    "/",
-    options.baseLink || libs.slugify(options.groupBy)
-  )
+  let baseLink = path.join("/", options.baseLink || libs.slugify(options.name))
   if (options.groupByType === "array") {
     if (typeof options.groupBy !== "string") {
       throw new Error(
