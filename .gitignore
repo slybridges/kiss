@@ -2,3 +2,4 @@ node_modules/
 public/
 *.code-workspace
 .DS_Store
+.vscode
