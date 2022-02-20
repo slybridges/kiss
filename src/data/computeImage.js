@@ -7,6 +7,15 @@ const computeImage = (
   { pages, site },
   { setDefaultImage = true } = {}
 ) => {
+  if (typeof page.cover === "string") {
+    // there is a manually set cover image
+    return getImagePermalink(
+      page.cover,
+      page.permalink,
+      setDefaultImage,
+      site.image
+    )
+  }
   // needed as computeImage is called recursively
   if (typeof page.image === "string") {
     return getImagePermalink(
