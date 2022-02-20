@@ -1,7 +1,6 @@
 const _ = require("lodash")
 
 const computeIterableCollectionDataView = (context, options = {}, config) => {
-  console.log(options.name)
   if (!options.name) {
     throw new Error(
       "computeIterableCollectionDataView needs a collection 'name' option."
@@ -36,7 +35,7 @@ const getCollectionObject = (collection, name, context, config) => {
     _.isPlainObject(entry)
   )
   return {
-    name: config.libs.unslugify(name),
+    name: _.startCase(name),
     entry: page,
     allPosts: collection.allPosts,
     children: _.map(childrenCollection, (child, childName) =>
