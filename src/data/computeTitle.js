@@ -1,12 +1,9 @@
-// Super basic computation, you probably want to set the title manually
-// or do something smarter according to your context
-const computeTitle = ({ permalink }, config) => {
-  if (!permalink) {
-    return null
-  }
-  return config.libs.unslugify(permalink, { slash: " | " })
+const computeTitle = ({ _meta }, config) => {
+  return _meta.baseTitle
+    ? _meta.baseTitle
+    : config.libs.unslugify(_meta.basename)
 }
 
-computeTitle.kissDependencies = ["permalink"]
+computeTitle.kissDependencies = ["_meta.basename", "_meta.baseTitle"]
 
 module.exports = computeTitle

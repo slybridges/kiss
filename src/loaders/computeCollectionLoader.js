@@ -58,7 +58,7 @@ const computeCollectionLoader = (pages, options, config) => {
   let topLevelPage = baseLoader(
     inputPath,
     { source: "computed", collectionGroup: options.name },
-    {},
+    { _meta: { baseTitle: options.name } },
     pages,
     config
   )
@@ -76,6 +76,7 @@ const computeCollectionLoader = (pages, options, config) => {
       { source: "computed", collectionGroup: options.name },
       {
         _meta: {
+          baseTitle: collection,
           children,
           descendants: children,
         },
