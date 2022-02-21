@@ -15,6 +15,7 @@ const allFilters = (_, config) => {
   config = markdown(_, config)
   config = markdownInline(_, config)
   config = unslugify(_, config)
+  config = slugify(_, config)
   return config
 }
 
@@ -64,6 +65,11 @@ const markdownInline = (_, config) => {
   return config
 }
 
+const slugify = (_, config) => {
+  config.libs.nunjucks.addFilter("slugify", (str) => config.libs.slugify(str))
+  return config
+}
+
 const unslugify = (_, config) => {
   config.libs.nunjucks.addFilter("unslugify", (str) =>
     config.libs.unslugify(str)
@@ -77,5 +83,6 @@ module.exports = {
   formatDateISO,
   markdown,
   markdownInline,
+  slugify,
   unslugify,
 }
