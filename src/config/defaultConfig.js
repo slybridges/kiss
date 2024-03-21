@@ -171,6 +171,11 @@ const defaultConfig = {
     // webpOptions: { /*... any option accepted by sharp.webp()*/ }
     // avifOptions: { /*... any option accepted by sharp.avif()*/ }
   },
+  templates: {
+    collection: "collection.njk",
+    default: "default.njk",
+    post: "post.njk",
+  },
   rss: {
     active: true,
     target: "feed.xml",

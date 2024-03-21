@@ -1,11 +1,11 @@
-const computeLayout = ({ _meta }) => {
+const computeLayout = ({ _meta }, config) => {
   if (_meta.isPost) {
-    return "post.njk"
+    return config.templates.post || "post.njk"
   }
   if (_meta.isCollection) {
-    return "collection.njk"
+    return config.templates.collection || "collection.njk"
   }
-  return "default.njk"
+  return config.templates.default || "default.njk"
 }
 
 computeLayout.kissDependencies = ["_meta.isCollection", "_meta.isPost"]
