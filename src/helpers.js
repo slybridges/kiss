@@ -97,7 +97,7 @@ const getDescendantPages = (
  *  had a permalink different than their input path */
 const getInputPath = (permalink, pages, baseContentPath) => {
   const pathObject = path.parse(permalink)
-  // search if a have a parent corresponding to this permalink
+  // search if a have a parent corresponding to this permalink's dir
   const parent = _.find(
     pages,
     (page) => page.permalink === pathObject.dir + "/"
@@ -106,8 +106,11 @@ const getInputPath = (permalink, pages, baseContentPath) => {
     // no result: assume inputPath same as permalink
     return path.join(baseContentPath, permalink)
   }
+  const parentInputPath = parent._meta.isDirectory
+    ? parent._meta.inputPath
+    : path.dirname(parent._meta.inputPath)
   return path.join(
-    path.dirname(parent._meta.inputPath), // inputPath of parent's dir
+    parentInputPath, // inputPath of parent's dir
     pathObject.base // filename
   )
 }
