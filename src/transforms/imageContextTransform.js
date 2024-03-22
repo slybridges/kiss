@@ -30,6 +30,12 @@ const imageContextTransform = async (context, options, config) => {
           `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`
         )
       }
+      if (isValidURL(src)) {
+        global.logger.log(
+          `Image '${src}' on page '${page._meta.outputPath}' is a URL. Skipping.`
+        )
+        return
+      }
       const imgPermalink = getAbsolutePath(src, page.permalink, {
         throwIfInvalid: true,
       })
