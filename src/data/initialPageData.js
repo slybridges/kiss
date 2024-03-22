@@ -25,6 +25,8 @@ const initialPageData = {
   category: computeCategory,
   created: computeCreated,
   description: computeDescription,
+  excludeFromCollection: false,
+  excludeFromSitemap: false,
   image: computeImage,
   layout: computeLayout,
   modified: computeModified,
