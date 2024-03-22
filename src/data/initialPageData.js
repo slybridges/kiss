@@ -31,6 +31,7 @@ const initialPageData = {
   layout: computeLayout,
   modified: computeModified,
   permalink: computePermalink,
+  slug: null, // use to overide the default slug of the permalink
   title: computeTitle,
   url: computeURL,
   // populated by baseLoader
