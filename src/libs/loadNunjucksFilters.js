@@ -1,6 +1,8 @@
-const parseISO = require("date-fns/parseISO")
-const _formatDate = require("date-fns/format")
-const _formatDateISO = require("date-fns/formatISO")
+const {
+  parseISO,
+  format: _formatDate,
+  formatISO: _formatDateISO,
+} = require("date-fns")
 const locales = require("date-fns/locale")
 
 const allFilters = (_, config) => {
