@@ -1,5 +1,14 @@
 const _ = require("lodash")
+const fs = require("fs")
 const path = require("path")
+
+// @ attibute format: @<attribute>:<value><terminator>
+// terminators: space, comma, newline, end of string, :, ', ",<, >, ), ], }
+const AT_GENERIC_ATTRIBUTE_REGEX =
+  /@([a-zA-Z0-9-_:]+):([^:,\s\n\]'"<>)}]+)(?=[:,\s\n\]'"<>)}]|$)/g
+
+const AT_FILE_ATTRIBUTE_REGEX =
+  /@file:([^:,\s\n\]'"<>)}]+)(?=[:,\s\n\]'"<>)}]|$)/g
 
 const findCollectionById = (collections, id) => {
   if (id === ".") {
@@ -7,7 +16,7 @@ const findCollectionById = (collections, id) => {
   }
   const flatCollections = flattenObjects(
     collections,
-    (v) => v._type === "collection"
+    (v) => v._type === "collection",
   )
   return flatCollections.find((collection) => collection._id === id)
 }
@@ -23,34 +32,6 @@ const flattenObjects = (obj, predicate) => {
   return flatArray
 }
 
-const getAbsolutePath = (pathname, basePath, options = {}) => {
-  if (typeof pathname !== "string") {
-    throw new Error(
-      `[getAbsolutePath]: expected path to be a string, got '${typeof pathname}'.`
-    )
-  }
-  if (isValidURL(pathname)) {
-    // don't change urls
-    return pathname
-  }
-  if (path.isAbsolute(pathname)) {
-    // prefix absolute paths with absoluteBase, if any
-    return options.absoluteBase
-      ? path.join(options.absoluteBase, pathname)
-      : pathname
-  }
-  if (!isValidPath(pathname)) {
-    if (options.throwIfInvalid) {
-      throw new Error(`[getAbsolutePath]: Path '${pathname}' is invalid`)
-    }
-    return pathname
-  }
-  if (!isValidPath(basePath)) {
-    throw new Error(`[getAbsolutePath]: basePath '${basePath}' is invalid`)
-  }
-  return path.join(basePath, pathname)
-}
-
 const getAbsoluteURL = (url = "", baseURL) => {
   if (isValidURL(url)) {
     // already absolute
@@ -63,7 +44,7 @@ const getAbsoluteURL = (url = "", baseURL) => {
   }
   if (!isValidURL(baseURL)) {
     throw new Error(
-      `[${this.name}]: baseURL but be a valid URL, got ${baseURL}.`
+      `[${this.name}]: baseURL but be a valid URL, got ${baseURL}.`,
     )
   }
   // valid path, make it absolute
@@ -81,7 +62,7 @@ const getChildrenPages = (page, pages, filterOptions) => {
 const getDescendantPages = (
   page,
   pages,
-  { filterBy, sortBy, skipUndefinedSort } = {}
+  { filterBy, sortBy, skipUndefinedSort } = {},
 ) => {
   let descendants = page._meta.descendants.map((desc) => pages[desc])
   if (filterBy) {
@@ -93,6 +74,34 @@ const getDescendantPages = (
   return descendants
 }
 
+const getFullPath = (pathname, basePath, options = {}) => {
+  if (typeof pathname !== "string") {
+    throw new Error(
+      `[getFullPath]: expected path to be a string, got '${typeof pathname}'.`,
+    )
+  }
+  if (isValidURL(pathname)) {
+    // don't change urls
+    return pathname
+  }
+  if (path.isAbsolute(pathname)) {
+    // prefix absolute paths with absoluteBase, if any
+    return options.absoluteBase
+      ? path.join(options.absoluteBase, pathname)
+      : pathname
+  }
+  if (!isValidPath(pathname)) {
+    if (options.throwIfInvalid) {
+      throw new Error(`[getFullPath]: Path '${pathname}' is invalid`)
+    }
+    return pathname
+  }
+  if (!isValidPath(basePath)) {
+    throw new Error(`[getFullPath]: basePath '${basePath}' is invalid`)
+  }
+  return path.join(basePath, pathname)
+}
+
 /** Computes the input path based on the permalink by checking if the parent
  *  had a permalink different than their input path */
 const getInputPath = (permalink, pages, baseContentPath) => {
@@ -100,7 +109,7 @@ const getInputPath = (permalink, pages, baseContentPath) => {
   // search if a have a parent corresponding to this permalink's dir
   const parent = _.find(
     pages,
-    (page) => page.permalink === pathObject.dir + "/"
+    (page) => page.permalink === pathObject.dir + "/",
   )
   if (!parent) {
     // no result: assume inputPath same as permalink
@@ -111,7 +120,7 @@ const getInputPath = (permalink, pages, baseContentPath) => {
     : path.dirname(parent._meta.inputPath)
   return path.join(
     parentInputPath, // inputPath of parent's dir
-    pathObject.base // filename
+    pathObject.base, // filename
   )
 }
 
@@ -127,6 +136,48 @@ const getLocale = (context, sep = "-") => {
     return locale
   }
   return ""
+}
+
+// Tries to find the page corresponding to the source
+// Supports absolute, and relative paths and absolute @attributes
+const getPageFromSource = (source, parentPage, pages, options = {}) => {
+  // source may have URL entities encoded. Decode them
+  source = decodeURI(source)
+  const { throwIfNotFound = true } = options
+  // need to call new RegExp each time to reset the lastIndex
+  const atAttribute = new RegExp(AT_GENERIC_ATTRIBUTE_REGEX).exec(source)
+  let page = null
+  if (atAttribute) {
+    // value is an @attribute
+    const [fullMatch, attribute, value] = atAttribute // eslint-disable-line no-unused-vars
+    switch (attribute) {
+      case "permalink":
+        page = Object.values(pages).find((p) => p.permalink === value)
+        break
+      case "file":
+        page = Object.values(pages).find((p) => p._meta.inputPath === value)
+        break
+      default:
+        throw new Error(
+          `[getPageFromSource] Unknown @attribute '${attribute}' on '${source}' in page '${parentPage._meta.id}'`,
+        )
+    }
+  } else {
+    // value is a path: compute the permalink in case it is a relative path
+    const permalink = getFullPath(source, parentPage.permalink, {
+      throwIfInvalid: true,
+    })
+    page = Object.values(pages).find((p) => p.permalink === permalink)
+  }
+  if (!page) {
+    if (throwIfNotFound) {
+      throw new Error(
+        `[getPageFromSource] Page '${source}' not found in page '${parentPage._meta.id}'`,
+      )
+    }
+    return null
+  }
+  return { ...page }
 }
 
 const getPageId = (inputPath, config) => {
@@ -161,7 +212,7 @@ const isChild = (page, child) => child._meta.parent === page._meta.id
 const isValidPath = (path) => {
   if (typeof path !== "string") {
     throw new Error(
-      `[isValidPath]: expected path to be a string, got '${typeof path}'.`
+      `[isValidPath]: expected path to be a string, got '${typeof path}'.`,
     )
   }
   const invalidPathPrefixes = ["#", "mailto:", "tel:"]
@@ -200,6 +251,56 @@ const omitDeep = (object, keys) => {
   return object
 }
 
+// This is the first step of @attribute management
+// We need to convert all @attributes to their absolute values
+// We need to do this before data cascade as some content with relative values
+// may end up in other pages during the cascade. It is thus important we do have absolute values everywhere
+// This step will also check that all @file values actually exist
+const relativeToAbsoluteAttributes = (
+  page,
+  options,
+  config,
+  //context,
+) => {
+  // go through all page attributes that don't start with _
+  for (const attribute in page) {
+    if (attribute.startsWith("_")) {
+      continue
+    }
+    // FIXME: we should also check objects and arrays
+    if (typeof page[attribute] === "string") {
+      // let's find all at attributes in the attribute
+      let match
+      while ((match = AT_FILE_ATTRIBUTE_REGEX.exec(page[attribute]))) {
+        let [fullMatch, value] = match
+        const parentInputPath = page._meta.isDirectory
+          ? page._meta.inputPath
+          : path.dirname(page._meta.inputPath)
+        const absolutePath = getFullPath(value, parentInputPath, {
+          absoluteBase: config.dirs.content,
+          throwIfInvalid: true,
+        })
+        // replace the value with the absolute path
+        page[attribute] = page[attribute].replaceAll(
+          fullMatch,
+          `@file:${absolutePath}`,
+        )
+        // tests that the file exists
+        const fullRelativePath = path.relative(
+          process.cwd(),
+          path.join(".", absolutePath),
+        )
+        if (!fs.existsSync(fullRelativePath)) {
+          global.logger.warn(
+            `Page '${page._meta.inputPath}': @file not found ${value} (full path: ${fullRelativePath})`,
+          )
+        }
+      }
+    }
+  }
+  return page
+}
+
 const sortPageIds = (ids, pages, sortBy, options) => {
   const pagesToSort = ids.map((id) => pages[id])
   return sortPages(pagesToSort, sortBy, options).map((page) => page._meta.id)
@@ -220,19 +321,23 @@ const sortPages = (pages, sortBy, { skipUndefinedSort } = {}) => {
 }
 
 module.exports = {
+  AT_FILE_ATTRIBUTE_REGEX,
+  AT_GENERIC_ATTRIBUTE_REGEX,
   findCollectionById,
-  getAbsolutePath,
   getAbsoluteURL,
   getChildrenPages,
   getDescendantPages,
+  getFullPath,
   getInputPath,
   getLocale,
+  getPageFromSource,
   getPageId,
   getParentId,
   getParentPage,
   isChild,
   isValidURL,
   omitDeep,
+  relativeToAbsoluteAttributes,
   sortPageIds,
   sortPages,
 }

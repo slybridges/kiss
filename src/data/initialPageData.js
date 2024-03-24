@@ -23,6 +23,7 @@ const initialPageData = {
     uri: null,
   },
   category: computeCategory,
+  cover: null, // set this if you want to override the default cover image
   created: computeCreated,
   description: computeDescription,
   excludeFromCollection: false,

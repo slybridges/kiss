@@ -5,7 +5,7 @@ const fg = require("fast-glob")
 const path = require("path")
 
 const { loadConfig } = require("./config")
-const { getParentId } = require("./helpers")
+const { getParentId, relativeToAbsoluteAttributes } = require("./helpers")
 const { baseLoader } = require("./loaders")
 const { setGlobalLogger } = require("./logger")
 
@@ -383,6 +383,8 @@ const loadContent = async (config, context) => {
             page = baseLoader(pathname, options, page, pages, config)
             // load content specific data
             page = handler(pathname, options, page, context, config)
+            // relative @attributes to absolute
+            page = relativeToAbsoluteAttributes(page, options, config)
             pages[page._meta.id] = page
             global.logger.log(
               `- [${handler.name}] loaded '${page._meta.inputPath}'`

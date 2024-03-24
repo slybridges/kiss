@@ -14,6 +14,7 @@ const {
   textLoader,
 } = require("../loaders")
 const {
+  atAttributesContentTransform,
   imageContextTransform,
   nunjucksContentTransform,
 } = require("../transforms")
@@ -117,6 +118,8 @@ const defaultConfig = {
     { handler: markdownLoader, namespace: "markdownLoader" },
     { handler: staticLoader, namespace: "staticLoader" },
     { handler: textLoader, namespace: "textLoader" },
+    // image is loaded in a separate staticLoader to allow for image optimization later
+    { handler: staticLoader, namespace: "image" },
     // Use the example below to create computed tag pages from the "tags" attribute found in pages
     // {
     //   source: "computed",
@@ -130,6 +133,11 @@ const defaultConfig = {
       outputType: "HTML",
       handler: nunjucksContentTransform,
       description: "Applying Nunjucks templates to content",
+    },
+    {
+      outputType: "HTML",
+      handler: atAttributesContentTransform,
+      description: "Finding and processing @attributes in content",
     },
     {
       scope: "CONTEXT",
@@ -160,10 +168,13 @@ const defaultConfig = {
     blur: false, // turning to true requires https://github.com/verlok/vanilla-lazyload
     blurWidth: 32,
     defaultWidth: 1024,
-    description: "Optimizing images",
     filename: defaultImageFilename,
-    formats: ["jpeg"], // webp, avif
+    // output format of images
+    formats: ["jpeg"],
+    // input path and format of images
+    match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif", "**/*.webp"],
     overwrite: env === "production", // if false, won't regenerate the image if already in public dir
+    outputType: "IMAGE",
     sizes: ["(min-width: 1024px) 1024px", "100vw"],
     widths: [320, 640, 1024, 1366, "original"],
     // resizeOptions: { /*... any option accepted by sharp.resize()*/ }
@@ -222,7 +233,7 @@ module.exports = defaultConfig
 function addPlugin(pluginFunc, options) {
   if (typeof pluginFunc !== "function") {
     throw new Error(
-      `config.addPlugin(): plugin argument should be a function, got: '${typeof pluginFunc}'`
+      `config.addPlugin(): plugin argument should be a function, got: '${typeof pluginFunc}'`,
     )
   }
   global.logger.info(`Loading '${pluginFunc.name}' plugin`)

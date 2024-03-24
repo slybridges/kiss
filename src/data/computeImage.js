@@ -1,28 +1,30 @@
 const cheerio = require("cheerio")
-const { getAbsolutePath } = require("../helpers")
+const { getPageFromSource } = require("../helpers")
 
 const computeImage = (
   page,
   config,
   { pages, site },
-  { setDefaultImage = true } = {}
+  { setDefaultImage = true } = {},
 ) => {
   if (typeof page.cover === "string") {
     // there is a manually set cover image
     return getImagePermalink(
       page.cover,
-      page.permalink,
+      page,
+      pages,
       setDefaultImage,
-      site.image
+      site.image,
     )
   }
   // needed as computeImage is called recursively
   if (typeof page.image === "string") {
     return getImagePermalink(
       page.image,
-      page.permalink,
+      page,
+      pages,
       setDefaultImage,
-      site.image
+      site.image,
     )
   }
   if (!page.content) {
@@ -37,7 +39,7 @@ const computeImage = (
         descendant,
         config,
         { pages, site },
-        { setDefaultImage: false }
+        { setDefaultImage: false },
       )
       if (image) {
         // found an image in descendants: break for loop
@@ -51,7 +53,7 @@ const computeImage = (
   // searches for an img tag in content
   const $ = cheerio.load(page.content)
   const src = $("img").first().attr("src")
-  return getImagePermalink(src, page.permalink, setDefaultImage, site.image)
+  return getImagePermalink(src, page, pages, setDefaultImage, site.image)
 }
 
 computeImage.kissDependencies = ["content", "permalink", "_meta.descendants"]
@@ -60,14 +62,9 @@ module.exports = computeImage
 
 /** private */
 
-const getImagePermalink = (
-  src,
-  pagePermalink,
-  setDefaultImage,
-  defaultImage
-) => {
+const getImagePermalink = (src, page, pages, setDefaultImage, defaultImage) => {
   if (!src) {
     return setDefaultImage ? defaultImage : null
   }
-  return getAbsolutePath(src, pagePermalink, { throwIfInvalid: true })
+  return getPageFromSource(src, page, pages).permalink
 }

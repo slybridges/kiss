@@ -12,7 +12,6 @@ const staticLoader = (id, options, { permalink, _meta }) => {
         "descendants",
         "isCollection",
         "isPost",
-        "parent",
       ]),
       outputType: options.outputType || "STATIC",
     },
