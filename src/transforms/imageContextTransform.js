@@ -233,7 +233,7 @@ const getImageMetadata = async (meta, permalink, options) => {
     }
   } catch (err) {
     global.logger.error(
-      `[getImageMetadata] Error getting image metadata for ${inputPath}\n`,
+      `[getImageMetadata] Error getting image metadata for ${meta.inputPath}\n`,
       err.stack,
     )
     meta.is404 = true
