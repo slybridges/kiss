@@ -48,13 +48,13 @@ const watch = async (options = {}, config) => {
       config.configFile,
       ...config.dirs.watchExtra,
     ],
-    { awaitWriteFinish: true }
+    { awaitWriteFinish: true },
   )
 
   // rebuild on file changes
   fileWatcher.on(
     "all",
-    _.debounce((event, file) => rebuild(options, event, file), 500)
+    _.debounce((event, file) => rebuild(options, event, file), 500),
   )
 
   // remove chokidar watcher
@@ -101,7 +101,7 @@ const preparePublicFolder = async (config) => {
     // with no error
     return outputFile(
       publicRootFile,
-      "<html><head></head><body><h3>Building site, please wait...</h3></body></html>"
+      "<html><head></head><body><h3>Building site, please wait...</h3></body></html>",
     )
   }
 }

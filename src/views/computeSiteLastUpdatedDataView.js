@@ -5,7 +5,7 @@ const computeSiteLastUpdatedDataView = ({ pages }, options, config) => {
   let lastUpdated = sortPages(
     pages,
     "-" + config.defaults.pageUpdatedAttribute,
-    { skipUndefinedSort: true }
+    { skipUndefinedSort: true },
   )
   if (lastUpdated.length === 0) {
     return null

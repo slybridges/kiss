@@ -57,7 +57,7 @@ const pageObject = (page, options, config) => {
       publishedDate = formatRFC3339(publishedDate)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format published date '${publishedDate}' to RFC3339 for page '${page.permalink}': ${err}.`
+        `[${this.name}]: cannot format published date '${publishedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
       )
       publishedDate = null
     }
@@ -68,7 +68,7 @@ const pageObject = (page, options, config) => {
       updatedDate = formatRFC3339(updatedDate)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format updated date '${updatedDate}' to RFC3339 for page '${page.permalink}': ${err}.`
+        `[${this.name}]: cannot format updated date '${updatedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
       )
       updatedDate = null
     }
@@ -121,7 +121,7 @@ const pageObject = (page, options, config) => {
       content = getAbsoluteURLContent(page.content, page.url)
     } else {
       global.logger.warn(
-        `[rssContextWriter]: url '${page.url}' from page '${page._meta.id}' is not valid. Cannot create absolute links for this page.`
+        `[rssContextWriter]: url '${page.url}' from page '${page._meta.id}' is not valid. Cannot create absolute links for this page.`,
       )
       content = page.content
     }
@@ -135,7 +135,7 @@ const pageObject = (page, options, config) => {
 const rssContextWriter = async (context, options, config) => {
   if (!options.target) {
     global.logger.warn(
-      `[rssContextWriter]: No 'target' passed in options. Skipping write.`
+      `[rssContextWriter]: No 'target' passed in options. Skipping write.`,
     )
     return
   }
@@ -146,7 +146,7 @@ const rssContextWriter = async (context, options, config) => {
       updatedDate = formatRFC3339(updatedDate)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format feed updated date '${updatedDate}' to RFC3339: ${err}.`
+        `[${this.name}]: cannot format feed updated date '${updatedDate}' to RFC3339: ${err}.`,
       )
       updatedDate = null
     }
@@ -189,9 +189,9 @@ const rssContextWriter = async (context, options, config) => {
   const pageObjects = _.map(
     sortPages(
       _.filter(context.pages, options.pageFilter),
-      config.defaults.sortCollectionBy
+      config.defaults.sortCollectionBy,
     ),
-    (page) => pageObject(page, options, config)
+    (page) => pageObject(page, options, config),
   )
   feedObject = feedObject.concat(pageObjects)
   const feedXML = xml({ feed: feedObject }, options.xmlOptions)

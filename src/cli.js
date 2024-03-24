@@ -11,7 +11,7 @@ yargs(hideBin(process.argv))
     "start",
     "start server and rebuilds on changes (serve + watch)",
     () => {},
-    start
+    start,
   )
   .command("serve", "start development server", () => {}, serve)
   .command("watch", "watch files and rebuild site on changes", () => {}, watch)

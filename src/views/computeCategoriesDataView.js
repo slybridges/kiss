@@ -8,7 +8,7 @@ const computeCategoriesDataView = (context, options = {}, config) => {
   let categories = []
   _.filter(
     context.pages,
-    ({ _meta }) => _meta.isDirectory && _meta.parent === options.parent
+    ({ _meta }) => _meta.isDirectory && _meta.parent === options.parent,
   ).forEach((page) => {
     categories.push({
       name: config.libs.unslugify(page._meta.basename),
@@ -20,7 +20,7 @@ const computeCategoriesDataView = (context, options = {}, config) => {
         context,
         { ...options, parent: page._meta.id },
         config,
-        page._meta.id
+        page._meta.id,
       ),
     })
   })

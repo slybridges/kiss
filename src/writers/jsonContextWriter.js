@@ -6,7 +6,7 @@ const { omitDeep } = require("../helpers")
 const jsonContextWriter = async (context, options = {}, config) => {
   if (!options.target) {
     global.logger.warn(
-      `[jsonContextWriter]: No 'target' passed in options. Skipping write.`
+      `[jsonContextWriter]: No 'target' passed in options. Skipping write.`,
     )
     return
   }

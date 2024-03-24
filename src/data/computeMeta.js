@@ -30,7 +30,7 @@ const computeDescendants = (page, config, { pages }, rootCall = true) => {
     page._meta.children.forEach((id) => {
       desc = _.union(
         desc,
-        computeDescendants(pages[id], config, { pages }, false)
+        computeDescendants(pages[id], config, { pages }, false),
       )
     })
   }

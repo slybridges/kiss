@@ -6,7 +6,7 @@ const locales = require("date-fns/locale")
 const allFilters = (_, config) => {
   if (!config.libs.nunjucks) {
     global.logger.error(
-      "[nunjucksFilters.all]: can't load filters, nunjucks lib isn't loaded."
+      "[nunjucksFilters.all]: can't load filters, nunjucks lib isn't loaded.",
     )
     return config
   }
@@ -52,7 +52,7 @@ const formatDateISO = (_, config) => {
 const markdown = (_, config) => {
   const safe = config.libs.nunjucks.getFilter("safe")
   config.libs.nunjucks.addFilter("markdown", (str = "") =>
-    safe(config.libs.marked(str))
+    safe(config.libs.marked(str)),
   )
   return config
 }
@@ -60,7 +60,7 @@ const markdown = (_, config) => {
 const markdownInline = (_, config) => {
   const safe = config.libs.nunjucks.getFilter("safe")
   config.libs.nunjucks.addFilter("markdownInline", (str = "") =>
-    safe(config.libs.marked.parseInline(str))
+    safe(config.libs.marked.parseInline(str)),
   )
   return config
 }
@@ -72,7 +72,7 @@ const slugify = (_, config) => {
 
 const unslugify = (_, config) => {
   config.libs.nunjucks.addFilter("unslugify", (str) =>
-    config.libs.unslugify(str)
+    config.libs.unslugify(str),
   )
   return config
 }

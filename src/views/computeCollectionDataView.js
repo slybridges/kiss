@@ -10,7 +10,7 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
   }
   let collections = _.filter(
     pages,
-    ({ _meta }) => _meta.isCollection && _meta.parent === options.parent
+    ({ _meta }) => _meta.isCollection && _meta.parent === options.parent,
   ).reduce((collections, page) => {
     if (!page._meta.descendants) {
       return collections
@@ -26,7 +26,7 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
         ...computeCollectionDataView(
           { pages },
           { ...options, parent: page._meta.id, isRootCall: false },
-          config
+          config,
         ),
       },
     }

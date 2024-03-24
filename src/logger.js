@@ -2,7 +2,7 @@ const chalk = require("chalk")
 
 const getLevel = (level) =>
   ["log", "info", "section", "success", "warn", "error"].findIndex(
-    (l) => l === level
+    (l) => l === level,
   )
 
 const log = (level, verbosity, ...args) => {

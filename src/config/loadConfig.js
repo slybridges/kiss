@@ -32,17 +32,17 @@ const checkConfig = (config) => {
   const siteURL = _.get(config, "context.site.url")
   if (!isValidURL(siteURL)) {
     global.logger.error(
-      `[checkConfig] 'context.site.url' is required and should be a valid URL (e.g. https://example.org), got ${siteURL}.`
+      `[checkConfig] 'context.site.url' is required and should be a valid URL (e.g. https://example.org), got ${siteURL}.`,
     )
   }
   if (!_.get(config, "context.site.title")) {
     global.logger.warn(
-      `[checkConfig] No site title found. We highly recommend to set it in 'context.site.title'.`
+      `[checkConfig] No site title found. We highly recommend to set it in 'context.site.title'.`,
     )
   }
   if (!_.get(config, "context.site.image")) {
     global.logger.warn(
-      `[checkConfig] No default image found. We highly recommend to set one in  'context.site.image'.`
+      `[checkConfig] No default image found. We highly recommend to set one in  'context.site.image'.`,
     )
   }
 }

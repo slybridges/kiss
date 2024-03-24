@@ -37,7 +37,7 @@ const build = async (options = {}, config = null) => {
   }
 
   global.logger.section(
-    `Loading content from '${config.dirs.content}' directory`
+    `Loading content from '${config.dirs.content}' directory`,
   )
   context.pages = await loadContent(config, context)
 
@@ -68,7 +68,7 @@ const build = async (options = {}, config = null) => {
   const warningCount = global.logger.counts.warn
   if (errorCount > 0) {
     global.logger.error(
-      `${errorCount} error(s) and ${warningCount} warning(s) found.`
+      `${errorCount} error(s) and ${warningCount} warning(s) found.`,
     )
     if (!watchMode) {
       console.timeEnd("Build time")
@@ -104,7 +104,7 @@ const applyTransforms = async (context, config) => {
       throw new Error(
         `[applyTransforms]: invalid scope for transform ${
           handler.name
-        }, got '${scope}'. Valid choices are ${JSON.stringify(validScopes)}`
+        }, got '${scope}'. Valid choices are ${JSON.stringify(validScopes)}`,
       )
     }
     if (scope === "CONTEXT") {
@@ -117,7 +117,7 @@ const applyTransforms = async (context, config) => {
       } catch (err) {
         global.logger.error(
           `[${handler.name}] Error during transform:\n`,
-          err.stack
+          err.stack,
         )
       }
     } else {
@@ -136,7 +136,7 @@ const applyTransforms = async (context, config) => {
         } catch (err) {
           global.logger.error(
             `[${handler.name}] Error during transform of page '${id}'\n`,
-            err.stack
+            err.stack,
           )
         }
       }
@@ -157,7 +157,7 @@ const computeDataViews = (context, config) => {
     } catch (err) {
       global.logger.error(
         `[${handler.name}] Error during computing data view for '${attribute}'\n`,
-        err.stack
+        err.stack,
       )
     }
   })
@@ -197,7 +197,7 @@ const computePageData = (data, config, context, options = {}) => {
         currentPending = countPendingDependencies(
           options.topLevelData,
           context.pages,
-          value.kissDependencies
+          value.kissDependencies,
         )
       }
       if (currentPending == 0) {
@@ -236,7 +236,7 @@ const computeAllPagesData = (context, config) => {
       } catch (err) {
         global.logger.error(
           `[computePageData] Error during computing page data for page id '${page._meta.id}'\n`,
-          err.stack
+          err.stack,
         )
       }
       context.pages[key] = computed.data
@@ -245,13 +245,13 @@ const computeAllPagesData = (context, config) => {
     if (pendingTotal > 0 && round + 1 > config.defaults.maxComputingRounds) {
       global.logger.error(
         ```Could not compute all data in ${config.defaults.maxComputingRounds} rounds. Check for circular
-dependencies or increase the 'maxComputingRounds' value.```
+dependencies or increase the 'maxComputingRounds' value.```,
       )
       break
     }
     if (pendingTotal > 0) {
       global.logger.log(
-        `- Round ${round}: ${pendingTotal} data points could not yet be computed. New round.`
+        `- Round ${round}: ${pendingTotal} data points could not yet be computed. New round.`,
       )
     } else {
       global.logger.log(`- Round ${round}: all data points computed.`)
@@ -282,8 +282,8 @@ const countPendingDependencies = (page, pages, deps = []) => {
             (pendingCount += countPendingDependencies(
               pages[id],
               pages,
-              restDeps
-            ))
+              restDeps,
+            )),
         )
       } else if (isComputableValue(depValue)) {
         pendingCount++
@@ -293,7 +293,7 @@ const countPendingDependencies = (page, pages, deps = []) => {
       }
     } else {
       throw new Error(
-        `countPendingDependencies: dependency should either be a string or an array of strings: ${dep}`
+        `countPendingDependencies: dependency should either be a string or an array of strings: ${dep}`,
       )
     }
   })
@@ -321,7 +321,7 @@ const directoryCollectionLoader = (pathname, options, pages, config) => {
     { isDirectory: true, collectionGroup: "directory" },
     isTopLevel ? config.defaults.pageData : {},
     pages,
-    config
+    config,
   )
 
   return _.merge({}, pages, {
@@ -387,19 +387,19 @@ const loadContent = async (config, context) => {
             page = relativeToAbsoluteAttributes(page, options, config)
             pages[page._meta.id] = page
             global.logger.log(
-              `- [${handler.name}] loaded '${page._meta.inputPath}'`
+              `- [${handler.name}] loaded '${page._meta.inputPath}'`,
             )
           } catch (err) {
             global.logger.error(
               `- [${handler.name}] Error loading '${_.get(
                 page,
-                "_meta.inputPath"
+                "_meta.inputPath",
               )}'\n`,
-              err.stack
+              err.stack,
             )
           }
         }
-      })
+      }),
   )
   // computed loaders
   _.filter(config.loaders, (loader) => loader.source === "computed").forEach(
@@ -409,7 +409,7 @@ const loadContent = async (config, context) => {
         description || `Loading computed pages using ${handler.name}`
       global.logger.info(message)
       pages = handler(pages, options, config)
-    }
+    },
   )
   return pages
 }
@@ -454,7 +454,7 @@ const runCopyHook = ({ from, to, description }, config) => {
   } catch (e) {
     global.logger.error(
       `Error copying from '${from}' to '${publicTo}'\n`,
-      e.stack
+      e.stack,
     )
   }
 }
@@ -500,11 +500,11 @@ const writeStaticSite = async (context, config) => {
     _.map(context.pages, async (page) => {
       if (!page.permalink) {
         global.logger.log(
-          `- Page '${page._meta.id}' has no permalink. Skipping.`
+          `- Page '${page._meta.id}' has no permalink. Skipping.`,
         )
       } else {
         const writer = config.writers.find(
-          (writer) => writer.outputType === page._meta.outputType
+          (writer) => writer.outputType === page._meta.outputType,
         )
         if (writer) {
           const { handler, namespace, ...rest } = writer
@@ -512,21 +512,21 @@ const writeStaticSite = async (context, config) => {
           try {
             await handler(page, options, config, context)
             global.logger.log(
-              `- [${writer.handler.name}] wrote '${page._meta.outputPath}'`
+              `- [${writer.handler.name}] wrote '${page._meta.outputPath}'`,
             )
           } catch (err) {
             global.logger.error(
               `- [${writer.handler.name}] error writing '${page._meta.outputPath}'\n`,
-              err.stack
+              err.stack,
             )
           }
         } else {
           global.logger.warn(
-            `- no writer for type '${page._meta.outputType}' found for '${page._meta.inputPath}'. Skipping.`
+            `- no writer for type '${page._meta.outputType}' found for '${page._meta.inputPath}'. Skipping.`,
           )
         }
       }
-    })
+    }),
   )
   const contextWriters = _.filter(config.writers, { scope: "CONTEXT" })
   if (contextWriters.length === 0) {
@@ -544,14 +544,14 @@ const writeStaticSite = async (context, config) => {
       try {
         await handler(context, options, config)
         global.logger.log(
-          `- [${handler.name}] wrote ${options.target || "file"}`
+          `- [${handler.name}] wrote ${options.target || "file"}`,
         )
       } catch (err) {
         global.logger.error(
           `- [${handler.name}] error writing ${options.target || "file"}\n`,
-          err.stack
+          err.stack,
         )
       }
-    })
+    }),
   )
 }

@@ -26,7 +26,7 @@ const pageObject = (page, options, config) => {
       lastMod = formatISO(lastMod)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format lastmod date '${lastMod}' to ISO for page '${page.permalink}'. Setting null.`
+        `[${this.name}]: cannot format lastmod date '${lastMod}' to ISO for page '${page.permalink}'. Setting null.`,
       )
       lastMod = null
     }
@@ -44,7 +44,7 @@ const pageObject = (page, options, config) => {
 const sitemapContextWriter = async (context, options, config) => {
   if (!options.target) {
     global.logger.warn(
-      `[sitemapContextWriter]: No 'target' passed in options. Skipping write.`
+      `[sitemapContextWriter]: No 'target' passed in options. Skipping write.`,
     )
     return
   }

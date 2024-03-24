@@ -16,7 +16,7 @@ const computeCollectionLoader = (pages, options, config) => {
   if (options.groupByType === "array") {
     if (typeof options.groupBy !== "string") {
       throw new Error(
-        "computeCollectionLoader: groupBy options needs to be a string"
+        "computeCollectionLoader: groupBy options needs to be a string",
       )
     }
     // we need to normalize pages to list each array element individually
@@ -35,7 +35,7 @@ const computeCollectionLoader = (pages, options, config) => {
         elements.map((element) => result.push({ ...page, _groupKey: element }))
         return result
       },
-      []
+      [],
     )
     options.groupBy = "_groupKey"
   } else {
@@ -60,7 +60,7 @@ const computeCollectionLoader = (pages, options, config) => {
     { source: "computed", collectionGroup: options.name },
     { _meta: { baseTitle: options.name } },
     pages,
-    config
+    config,
   )
   pages[topLevelPage._meta.id] = topLevelPage
 
@@ -69,7 +69,7 @@ const computeCollectionLoader = (pages, options, config) => {
     let inputPath = path.join(
       config.dirs.content,
       baseLink,
-      libs.slugify(collection)
+      libs.slugify(collection),
     )
     let computedPage = baseLoader(
       inputPath,
@@ -82,7 +82,7 @@ const computeCollectionLoader = (pages, options, config) => {
         },
       },
       pages,
-      config
+      config,
     )
     pages[computedPage._meta.id] = computedPage
   })

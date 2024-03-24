@@ -22,12 +22,12 @@ const imageContextTransform = async (context, options, config) => {
       let src = decodeURI($(img).attr("src"))
       if (!img.attribs.alt) {
         global.logger.warn(
-          `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`
+          `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`,
         )
       }
       if (isValidURL(src)) {
         global.logger.log(
-          `Image '${src}' on page '${page._meta.outputPath}' is a URL. Skipping.`
+          `Image '${src}' on page '${page._meta.outputPath}' is a URL. Skipping.`,
         )
         return
       }
@@ -55,7 +55,7 @@ const imageContextTransform = async (context, options, config) => {
       }
       if (!isValidURL(content)) {
         global.logger.warn(
-          `Image URL '${content}' in meta ${selector} on page '${page._meta.outputPath}' is not a valid URL.`
+          `Image URL '${content}' in meta ${selector} on page '${page._meta.outputPath}' is not a valid URL.`,
         )
         return
       }
@@ -99,21 +99,21 @@ const getDefaultDerivative = (page) => {
   const { defaultFormat, defaultWidth, derivatives } = page
   if (!defaultFormat) {
     throw new Error(
-      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultFormat'.`
+      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultFormat'.`,
     )
   }
   if (!defaultWidth) {
     throw new Error(
-      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultWidth'.`
+      `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultWidth'.`,
     )
   }
   if (!derivatives.length === 0) {
     throw new Error(
-      `[getDefaultDerivative] page '${page._meta.id}' does not have any derivative.`
+      `[getDefaultDerivative] page '${page._meta.id}' does not have any derivative.`,
     )
   }
   const derivative = derivatives.find(
-    (d) => d.format === defaultFormat && d.width === defaultWidth
+    (d) => d.format === defaultFormat && d.width === defaultWidth,
   )
   return derivative ? derivative : derivatives[derivatives.length - 1]
 }
@@ -144,7 +144,7 @@ const getDerivatives = (page, options, config) => {
         }
       } else {
         throw new Error(
-          `[getDerivatives] Unknown 'width' option. Expected a number or 'original', got '${width}'.`
+          `[getDerivatives] Unknown 'width' option. Expected a number or 'original', got '${width}'.`,
         )
       }
       derivatives.push(derivative)
@@ -234,7 +234,7 @@ const getImageMetadata = async (meta, permalink, options) => {
   } catch (err) {
     global.logger.error(
       `[getImageMetadata] Error getting image metadata for ${inputPath}\n`,
-      err.stack
+      err.stack,
     )
     meta.is404 = true
   }
