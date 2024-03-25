@@ -70,16 +70,20 @@ const defaultConfig = {
   defaults: {
     sortCollectionBy: "-created",
     dateFormat: "MMMM do, yyyy 'at' hh:mm aaa",
+    // descriptionLength: how many characters to use for the description field
+    // Meta descriptions can be any length, but Google generally truncates snippets to ~155–160 characters.
+    // https://moz.com/learn/seo/meta-description
+    // This settings only applies to description automatically generated. If you provide your own description, it will be used as is.
+    descriptionLength: 160,
     maxComputingRounds: 10,
     pageData: initialPageData,
     pagePublishedAttribute: "created",
     pageUpdatedAttribute: "modified",
   },
   dirs: {
-    content: "content",
-    public: "public",
-    theme: "theme",
-    template: "theme/templates",
+    content: "content", // where to load documents from
+    public: "public", // where to write the generated files
+    theme: "theme", // where to find templates and other design files    template: "theme/templates",
     watchExtra: [], // additional paths to watch for change in watch mode
   },
   env: env,
