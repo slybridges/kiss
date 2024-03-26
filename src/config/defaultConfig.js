@@ -83,7 +83,8 @@ const defaultConfig = {
   dirs: {
     content: "content", // where to load documents from
     public: "public", // where to write the generated files
-    theme: "theme", // where to find templates and other design files    template: "theme/templates",
+    theme: "theme", // where to find templates and other design files
+    template: "theme/templates", // where to find templates
     watchExtra: [], // additional paths to watch for change in watch mode
   },
   env: env,
