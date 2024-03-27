@@ -196,7 +196,10 @@ const defaultConfig = {
     active: true,
     target: "feed.xml",
     pageFilter: (page) =>
-      page.url && page._meta.isPost && !page.excludeFromSitemap,
+      page.url &&
+      page._meta.isPost &&
+      !page.excludeFromWrite &&
+      !page.excludeFromSitemap,
     xmlOptions: {
       declaration: true,
       indent: env === "production" ? null : "  ",
@@ -222,7 +225,10 @@ const defaultConfig = {
     },
     target: "sitemap.xml",
     pageFilter: (page) =>
-      page.url && page._meta.outputType === "HTML" && !page.excludeFromSitemap,
+      page.url &&
+      page._meta.outputType === "HTML" &&
+      !page.excludeFromWrite &&
+      !page.excludeFromSitemap,
     xmlOptions: {
       declaration: true,
       indent: env === "production" ? null : "  ",

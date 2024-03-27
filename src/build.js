@@ -519,7 +519,11 @@ const writeStaticSite = async (context, config) => {
   global.logger.info("Writing individual pages")
   await Promise.all(
     _.map(context.pages, async (page) => {
-      if (!page.permalink) {
+      if (page.excludeFromWrite) {
+        global.logger.log(
+          `- Page '${page._meta.id}' is marked as excludeFromWrite. Skipping.`,
+        )
+      } else if (!page.permalink) {
         global.logger.log(
           `- Page '${page._meta.id}' has no permalink. Skipping.`,
         )

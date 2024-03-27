@@ -28,6 +28,7 @@ const initialPageData = {
   description: computeDescription,
   excludeFromCollection: false,
   excludeFromSitemap: false,
+  excludeFromWrite: false,
   image: computeImage,
   layout: computeLayout,
   modified: computeModified,
