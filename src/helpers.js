@@ -256,49 +256,53 @@ const omitDeep = (object, keys) => {
 // We need to do this before data cascade as some content with relative values
 // may end up in other pages during the cascade. It is thus important we do have absolute values everywhere
 // This step will also check that all @file values actually exist
-const relativeToAbsoluteAttributes = (
-  page,
-  options,
-  config,
-  //context,
-) => {
+const relativeToAbsoluteAttributes = (page, options, config) => {
   // go through all page attributes that don't start with _
   for (const attribute in page) {
-    if (attribute.startsWith("_")) {
-      continue
-    }
-    // FIXME: we should also check objects and arrays
-    if (typeof page[attribute] === "string") {
-      // let's find all at attributes in the attribute
-      let match
-      while ((match = AT_FILE_ATTRIBUTE_REGEX.exec(page[attribute]))) {
-        let [fullMatch, value] = match
-        const parentInputPath = page._meta.isDirectory
-          ? page._meta.inputPath
-          : path.dirname(page._meta.inputPath)
-        const absolutePath = getFullPath(value, parentInputPath, {
-          absoluteBase: config.dirs.content,
-          throwIfInvalid: true,
-        })
-        // replace the value with the absolute path
-        page[attribute] = page[attribute].replaceAll(
-          fullMatch,
-          `@file:${absolutePath}`,
-        )
-        // tests that the file exists
-        const fullRelativePath = path.relative(
-          process.cwd(),
-          path.join(".", absolutePath),
-        )
-        if (!fs.existsSync(fullRelativePath)) {
-          global.logger.warn(
-            `Page '${page._meta.inputPath}': @file not found ${value} (full path: ${fullRelativePath})`,
-          )
-        }
-      }
-    }
+    page[attribute] = relativeToAbsolute(page[attribute], page, config)
   }
   return page
+}
+
+const relativeToAbsolute = (attributeValue, { _meta }, config) => {
+  // let's find all at attributes in the attribute
+  let match
+  if (typeof attributeValue === "string") {
+    while ((match = AT_FILE_ATTRIBUTE_REGEX.exec(attributeValue))) {
+      let [fullMatch, value] = match
+      const parentInputPath = _meta.isDirectory
+        ? _meta.inputPath
+        : path.dirname(_meta.inputPath)
+      const absolutePath = getFullPath(value, parentInputPath, {
+        absoluteBase: config.dirs.content,
+        throwIfInvalid: true,
+      })
+      // replace the value with the absolute path
+      attributeValue = attributeValue.replaceAll(
+        fullMatch,
+        `@file:${absolutePath}`,
+      )
+      // tests that the file exists
+      const fullRelativePath = path.relative(
+        process.cwd(),
+        path.join(".", absolutePath),
+      )
+      if (!fs.existsSync(fullRelativePath)) {
+        global.logger.warn(
+          `Page '${_meta.inputPath}': @file not found ${value} (full path: ${fullRelativePath})`,
+        )
+      }
+    }
+  } else if (typeof attributeValue === "object") {
+    for (const key in attributeValue) {
+      attributeValue[key] = relativeToAbsolute(
+        attributeValue[key],
+        { _meta },
+        config,
+      )
+    }
+  }
+  return attributeValue
 }
 
 const sortPageIds = (ids, pages, sortBy, options) => {
