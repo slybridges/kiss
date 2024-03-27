@@ -120,11 +120,11 @@ const defaultConfig = {
   loaders: [
     { handler: jsLoader, namespace: "jsLoader" },
     { handler: jsonLoader, namespace: "jsonLoader" },
-    { handler: markdownLoader, namespace: "markdownLoader" },
     { handler: staticLoader, namespace: "staticLoader" },
     { handler: textLoader, namespace: "textLoader" },
     // image is loaded in a separate staticLoader to allow for image optimization later
     { handler: staticLoader, namespace: "image" },
+    { handler: markdownLoader, namespace: "markdownLoader" },
     // Use the example below to create computed tag pages from the "tags" attribute found in pages
     // {
     //   source: "computed",
