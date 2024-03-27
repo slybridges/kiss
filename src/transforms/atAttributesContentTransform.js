@@ -22,7 +22,7 @@ const atAttributesContentTransform = (page, options, config, context) => {
 
   if (errorCount > 0) {
     throw new Error(
-      `Page '${page.permalink}': ${errorCount} errors found tranforming @attributes`,
+      `Page '${page.permalink}': ${errorCount} errors found transforming @attributes`,
     )
   }
 
@@ -72,9 +72,7 @@ const transformAtAttributesinObjValue = (
         pageFound = Object.values(context.pages).find(
           (page) => page.permalink === value,
         )
-        if (pageFound) {
-          // found the corresponding page
-        } else {
+        if (!pageFound) {
           // we have an error
           global.logger.error(
             `Key '${objKey}' in page '${page.permalink}': no page found with @permalink '${value}'`,
