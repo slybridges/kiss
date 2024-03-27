@@ -477,27 +477,29 @@ const sortFiles = (files) => {
   return files.sort((fileA, fileB) => {
     const isAIndexFile = fileA.name.startsWith("index.")
     const isBIndexFile = fileB.name.startsWith("index.")
-    const isAPostFile = fileA.name.startsWith === "post."
-    const isBPostFile = fileB.name.startsWith === "post."
+    const isAPostFile = fileA.name.startsWith("post.")
+    const isBPostFile = fileB.name.startsWith("post.")
 
     if (isAIndexFile && isBIndexFile) {
       // both are indexes
       // return the shortest path first to respect data cascade
       return fileA.path.length < fileB.path.length ? -1 : 1
     }
+    if (isAIndexFile || isBIndexFile) {
+      // one of them is an index file
+      // index files first
+      return isAIndexFile ? -1 : 1
+    }
     if (isAPostFile && isBPostFile) {
       // both are post files
-      // return the shortest path first to respect data cascade
-      return fileA.path.length < fileB.path.length ? -1 : 1
+      // we don't want higher up post files to impact lower post files
+      // so we return the longest path first
+      return fileA.path.length < fileB.path.length ? 1 : -1
     }
-    if (isBIndexFile && !isAIndexFile) {
-      return 1
-    }
-    if (isAPostFile && !isBPostFile) {
-      return -1
-    }
-    if (isBPostFile && !isAPostFile) {
-      return 1
+    if (isAPostFile || isBPostFile) {
+      // one of them is a post file
+      // post files last
+      return isAPostFile ? 1 : -1
     }
     // all other files
     return 0

@@ -27,6 +27,7 @@ const baseLoader = (inputPath, options, page, pages, config) => {
       // directory post, replace parent and overwrite the rest
       id = _.get(parentData, "_meta.id", "")
       parentId = _.get(parentData, "_meta.parent", "")
+      basename = _.get(parentData, "_meta.basename", "")
     }
   }
   if (isDirectory) {
