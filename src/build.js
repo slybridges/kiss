@@ -365,7 +365,7 @@ const loadContent = async (config, context) => {
         let files = fg.sync(match, fgOptions)
         // sort files to make sure index files are loaded first
         // and respect the data cascade principle
-        files = sortIndexFirst(files)
+        files = sortFiles(files)
         for (const file of files) {
           let pathname = path.join(config.dirs.content, file.path)
           let page = {}
@@ -470,16 +470,37 @@ const runExecHook = (command, options) => {
   }
 }
 
-const sortIndexFirst = (files) => {
+// Sort files using those rules:
+// Files higher in the list will be loaded first
+// Inside the same directory load index first, all other files but post files after and post files last
+const sortFiles = (files) => {
   return files.sort((fileA, fileB) => {
     const isAIndexFile = fileA.name.startsWith("index.")
     const isBIndexFile = fileB.name.startsWith("index.")
+    const isAPostFile = fileA.name.startsWith === "post."
+    const isBPostFile = fileB.name.startsWith === "post."
+
     if (isAIndexFile && isBIndexFile) {
       // both are indexes
       // return the shortest path first to respect data cascade
-      return fileB.path.length < fileA.path.length ? 1 : -1
+      return fileA.path.length < fileB.path.length ? -1 : 1
     }
-    return isBIndexFile && !isAIndexFile ? 1 : -1
+    if (isAPostFile && isBPostFile) {
+      // both are post files
+      // return the shortest path first to respect data cascade
+      return fileA.path.length < fileB.path.length ? -1 : 1
+    }
+    if (isBIndexFile && !isAIndexFile) {
+      return 1
+    }
+    if (isAPostFile && !isBPostFile) {
+      return -1
+    }
+    if (isBPostFile && !isAPostFile) {
+      return 1
+    }
+    // all other files
+    return 0
   })
 }
 
