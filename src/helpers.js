@@ -140,7 +140,7 @@ const getLocale = (context, sep = "-") => {
 
 // Tries to find the page corresponding to the source
 // Supports absolute, and relative paths and absolute @attributes
-const getPageFromSource = (source, parentPage, pages, options = {}) => {
+const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   // source may have URL entities encoded. Decode them
   source = decodeURI(source)
   const { throwIfNotFound = true } = options
@@ -155,7 +155,14 @@ const getPageFromSource = (source, parentPage, pages, options = {}) => {
         page = Object.values(pages).find((p) => p.permalink === value)
         break
       case "file":
-        page = Object.values(pages).find((p) => p._meta.inputPath === value)
+        if (!path.isAbsolute(value)) {
+          throw new Error(
+            `[getPageFromSource] Page '${parentPage._meta.id}': @file attribute '${value}' must be absolute at this point.`,
+          )
+        }
+        page = Object.values(pages).find(
+          (p) => p._meta.inputPath === path.join(config.dirs.content, value),
+        )
         break
       default:
         throw new Error(
@@ -273,8 +280,10 @@ const relativeToAbsolute = (attributeValue, { _meta }, config) => {
       const parentInputPath = _meta.isDirectory
         ? _meta.inputPath
         : path.dirname(_meta.inputPath)
-      const absolutePath = getFullPath(value, parentInputPath, {
-        absoluteBase: config.dirs.content,
+      // we need to remove the content dir from the parent path to get their absolute path
+      const parentAbsolutePath =
+        "/" + path.relative(config.dirs.content, parentInputPath)
+      const absolutePath = getFullPath(value, parentAbsolutePath, {
         throwIfInvalid: true,
       })
       // replace the value with the absolute path
@@ -285,7 +294,7 @@ const relativeToAbsolute = (attributeValue, { _meta }, config) => {
       // tests that the file exists
       const fullRelativePath = path.relative(
         process.cwd(),
-        path.join(".", absolutePath),
+        path.join(".", config.dirs.content, absolutePath),
       )
       if (!fs.existsSync(fullRelativePath)) {
         global.logger.warn(

@@ -1,4 +1,5 @@
 const _ = require("lodash")
+const path = require("path")
 
 const { AT_GENERIC_ATTRIBUTE_REGEX, isValidURL } = require("../helpers")
 
@@ -77,22 +78,30 @@ const transformAtAttributesinObjValue = (
         // At this stage, we know we have the full path already
         // it was computed during file loading
         // Search if a have a page with that inputPath
-        valueFound = findPageByFilepath(value, page, config, context)
-        if (valueFound) {
-          if (valueFound.excludeFromWrite) {
+        if (path.isAbsolute(value)) {
+          valueFound = findPageByFilepath(value, page, config, context)
+          if (valueFound) {
+            if (valueFound.excludeFromWrite) {
+              global.logger.error(
+                `Page '${page.permalink}' in '${objKey}': @file found '${value}' but page is marked as excludeFromWrite`,
+              )
+              errorCount++
+            }
+            // found the corresponding page: replace all occurrences with permalink
+            objValue = objValue.replaceAll(fullMatch, valueFound.permalink)
+          } else {
+            // something's wrong
             global.logger.error(
-              `Page '${page.permalink}' in '${objKey}': @file found '${value}' but page is marked as excludeFromWrite`,
+              `Page '${page.permalink}' in '${objKey}': @file not found '${value}'`,
             )
+            // remove the @file attribute in case the file is found magically later
+            objValue = objValue.replaceAll(fullMatch, value)
             errorCount++
           }
-          // found the corresponding page: replace all occurences with permalink
-          objValue = objValue.replaceAll(fullMatch, valueFound.permalink)
         } else {
-          // something's wrong
           global.logger.error(
-            `Page '${page.permalink}' in '${objKey}': @file not found '${value}'`,
+            `Page '${page.permalink}' in '${objKey}': @file attribute '${value}' must be absolute at this point.`,
           )
-          // remove the @file attribute in case the file is found magically later
           objValue = objValue.replaceAll(fullMatch, value)
           errorCount++
         }
@@ -137,7 +146,7 @@ const transformAtAttributesinObjValue = (
 
 const findPageByFilepath = (filepath, page, config, context) => {
   const pageFound = Object.values(context.pages).find(
-    (page) => page._meta.inputPath === filepath,
+    (page) => page._meta.inputPath === path.join(config.dirs.content, filepath),
   )
   return pageFound
 }

@@ -13,6 +13,7 @@ const computeImage = (
       page.cover,
       page,
       pages,
+      config,
       setDefaultImage,
       site.image,
     )
@@ -23,6 +24,7 @@ const computeImage = (
       page.image,
       page,
       pages,
+      config,
       setDefaultImage,
       site.image,
     )
@@ -53,7 +55,14 @@ const computeImage = (
   // searches for an img tag in content
   const $ = cheerio.load(page.content)
   const src = $("img").first().attr("src")
-  return getImagePermalink(src, page, pages, setDefaultImage, site.image)
+  return getImagePermalink(
+    src,
+    page,
+    pages,
+    config,
+    setDefaultImage,
+    site.image,
+  )
 }
 
 computeImage.kissDependencies = ["content", "permalink", "_meta.descendants"]
@@ -62,9 +71,16 @@ module.exports = computeImage
 
 /** private */
 
-const getImagePermalink = (src, page, pages, setDefaultImage, defaultImage) => {
+const getImagePermalink = (
+  src,
+  page,
+  pages,
+  config,
+  setDefaultImage,
+  defaultImage,
+) => {
   if (!src) {
     return setDefaultImage ? defaultImage : null
   }
-  return getPageFromSource(src, page, pages).permalink
+  return getPageFromSource(src, page, pages, config).permalink
 }

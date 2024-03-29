@@ -31,7 +31,7 @@ const imageContextTransform = async (context, options, config) => {
         )
         return
       }
-      const imgPage = getPageFromSource(src, page, context.pages)
+      const imgPage = getPageFromSource(src, page, context.pages, config)
       const imgId = imgPage._meta.id
       const imageDetails = await getImageDetails(
         imgPage,
@@ -60,7 +60,12 @@ const imageContextTransform = async (context, options, config) => {
         return
       }
       const url = new URL(content)
-      const imgPage = getPageFromSource(url.pathname, page, context.pages)
+      const imgPage = getPageFromSource(
+        url.pathname,
+        page,
+        context.pages,
+        config,
+      )
       const imgId = imgPage._meta.id
       const imageDetails = await getImageDetails(
         imgPage,
