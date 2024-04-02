@@ -335,72 +335,80 @@ const isComputableValue = (value) =>
 
 const loadContent = async (config, context) => {
   let pages = {}
-  // file loaders
-  await Promise.all(
-    config.loaders
-      .filter((loader) => !loader.source || loader.source === "file")
-      .map(async ({ handler, namespace, ...loaderOptions }) => {
-        const {
-          description,
-          match,
-          matchOptions = {},
-          ...options
-        } = namespace ? _.get(config, namespace, {}) : loaderOptions
-        if ("active" in options && !options.active) {
-          global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
-          return
-        }
-        let fgOptions = {
-          cwd: config.dirs.content,
-          markDirectories: true,
-          stats: true,
-          ...matchOptions,
-        }
-        const message =
-          description ||
-          `Loading files matching ${JSON.stringify(match)} using ${
-            handler.name
-          }`
-        global.logger.info(message)
-        let files = fg.sync(match, fgOptions)
-        // sort files to make sure index files are loaded first
-        // and respect the data cascade principle
-        files = sortFiles(files)
-        for (const file of files) {
-          let pathname = path.join(config.dirs.content, file.path)
-          let page = {}
-          try {
-            // load parent folders, if any
-            pages = directoryCollectionLoader(pathname, options, pages, config)
-            // load stats
-            page = {
-              _meta: {
-                fileCreated: file.stats.ctime,
-                fileModified: file.stats.mtime,
-              },
-            }
-            // load base data including _meta infos and based on ParentData
-            page = baseLoader(pathname, options, page, pages, config)
-            // load content specific data
-            page = handler(pathname, options, page, context, config)
-            // relative @attributes to absolute
-            page = relativeToAbsoluteAttributes(page, options, config)
-            pages[page._meta.id] = page
-            global.logger.log(
-              `- [${handler.name}] loaded '${page._meta.inputPath}'`,
-            )
-          } catch (err) {
-            global.logger.error(
-              `- [${handler.name}] Error loading '${_.get(
-                page,
-                "_meta.inputPath",
-              )}'\n`,
-              err.stack,
-            )
-          }
-        }
-      }),
+  let files = []
+  // We first need to fetch all files that match all loaders
+  // So that we can sort them in the right order before loading them
+  // This is essential for the data cascade to work properly
+  config.loaders
+    .filter((loader) => !loader.source || loader.source === "file")
+    .map(({ handler, namespace, ...loaderOptions }) => {
+      const {
+        match,
+        matchOptions = {},
+        ...options
+      } = namespace ? _.get(config, namespace, {}) : loaderOptions
+      if ("active" in options && !options.active) {
+        global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
+        return
+      }
+      let fgOptions = {
+        cwd: config.dirs.content,
+        markDirectories: true,
+        stats: true,
+        ...matchOptions,
+      }
+      global.logger.info(`Listing files matching ${JSON.stringify(match)}`)
+      files = files.concat(
+        fg.sync(match, fgOptions).map((file) => ({
+          ...file,
+          handler: handler.name,
+        })),
+      )
+    })
+  global.logger.info(
+    `Found ${files.length} files. Sorting the right order for the data cascade.`,
   )
+  // sorting and loading files
+  // sort files to make sure index.* files are loaded first and post.* files last
+  // in order to respect the data cascade principle
+  files = sortFiles(files)
+  global.logger.info(`Loading files...`)
+  for (const file of files) {
+    // finding the right loader for the file
+    const { handler, namespace, ...loaderOptions } = config.loaders.find(
+      (loader) => loader.handler.name === file.handler,
+    )
+    const options = namespace ? _.get(config, namespace, {}) : loaderOptions
+    let pathname = path.join(config.dirs.content, file.path)
+    let page = {}
+    try {
+      // load parent folders, if any
+      pages = directoryCollectionLoader(pathname, options, pages, config)
+      // load stats
+      page = {
+        _meta: {
+          fileCreated: file.stats.ctime,
+          fileModified: file.stats.mtime,
+        },
+      }
+      // load base data including _meta infos and based on ParentData
+      page = baseLoader(pathname, options, page, pages, config)
+      // load content specific data
+      page = await handler(pathname, options, page, context, config)
+      // relative @attributes to absolute
+      page = relativeToAbsoluteAttributes(page, options, config)
+      pages[page._meta.id] = page
+      global.logger.log(`- [${handler.name}] loaded '${page._meta.inputPath}'`)
+    } catch (err) {
+      global.logger.error(
+        `- [${handler.name}] Error loading '${_.get(
+          page,
+          "_meta.inputPath",
+        )}'\n`,
+        err.stack,
+      )
+    }
+  }
   // computed loaders
   _.filter(config.loaders, (loader) => loader.source === "computed").forEach(
     (loader) => {
