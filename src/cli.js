@@ -21,4 +21,10 @@ yargs(hideBin(process.argv))
     describe: "Verbosity level",
     choices: ["log", "info", "success", "warn", "error"],
   })
+  .option("u", {
+    alias: "unsafe-build",
+    boolean: true,
+    default: false,
+    describe: "Won't exit(1) on build errors",
+  })
   .demandCommand(1, "Enter a command").argv

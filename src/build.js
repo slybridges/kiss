@@ -12,7 +12,7 @@ const { setGlobalLogger } = require("./logger")
 const build = async (options = {}, config = null) => {
   console.time("Build time")
 
-  const { configFile, verbosity, watchMode } = options
+  const { configFile, unsafeBuild, verbosity, watchMode } = options
 
   setGlobalLogger(verbosity)
 
@@ -71,9 +71,15 @@ const build = async (options = {}, config = null) => {
       `${errorCount} error(s) and ${warningCount} warning(s) found.`,
     )
     if (!watchMode) {
-      console.timeEnd("Build time")
-      global.logger.info("Exiting build with errors.")
-      process.exit(1)
+      if (unsafeBuild) {
+        global.logger.info(
+          "Unsafe build mode: exiting build with errors without raising exit(1)",
+        )
+      } else {
+        global.logger.info("Exiting build with errors.")
+        console.timeEnd("Build time")
+        process.exit(1)
+      }
     }
   } else if (warningCount > 0) {
     global.logger.warn(`${warningCount} warning(s) found.`)
