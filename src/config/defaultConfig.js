@@ -123,7 +123,7 @@ const defaultConfig = {
     { handler: staticLoader, namespace: "staticLoader" },
     { handler: textLoader, namespace: "textLoader" },
     // image is loaded in a separate staticLoader to allow for image optimization later
-    { handler: staticLoader, namespace: "image" },
+    { handler: staticLoader, namespace: "image", outputType: "IMAGE" },
     { handler: markdownLoader, namespace: "markdownLoader" },
     // Use the example below to create computed tag pages from the "tags" attribute found in pages
     // {

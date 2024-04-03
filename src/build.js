@@ -101,7 +101,7 @@ const applyTransforms = async (context, config) => {
   const validScopes = [null, "PAGE", "CONTEXT"]
   for await (let transform of config.transforms) {
     const { scope, handler, outputType, namespace, ...rest } = transform
-    const options = namespace ? _.get(config, namespace, {}) : rest
+    const options = getOptions(config, namespace, rest)
     if ("active" in options && !options.active) {
       global.logger.log(`- [${handler.name}]: transform not active. Skipping.`)
       continue
@@ -339,20 +339,24 @@ const isComputableValue = (value) =>
   typeof value === "function" ||
   (_.isPlainObject(value) && value._kissCheckDependencies)
 
+const getOptions = (config, namespace, options) => {
+  const nameSpaceOptions = _.get(config, namespace, {})
+  return { ...nameSpaceOptions, ...options }
+}
+
 const loadContent = async (config, context) => {
   let pages = {}
   let files = []
   // We first need to fetch all files that match all loaders
   // So that we can sort them in the right order before loading them
   // This is essential for the data cascade to work properly
-  config.loaders
-    .filter((loader) => !loader.source || loader.source === "file")
-    .map(({ handler, namespace, ...loaderOptions }) => {
-      const {
-        match,
-        matchOptions = {},
-        ...options
-      } = namespace ? _.get(config, namespace, {}) : loaderOptions
+  config.loaders.forEach(
+    ({ handler, namespace, source, ...loaderOptions }, idx) => {
+      if (source && source !== "file") {
+        return
+      }
+      const allOptions = getOptions(config, namespace, loaderOptions)
+      const { match, matchOptions = {}, ...options } = allOptions
       if ("active" in options && !options.active) {
         global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
         return
@@ -365,12 +369,10 @@ const loadContent = async (config, context) => {
       }
       global.logger.info(`Listing files matching ${JSON.stringify(match)}`)
       files = files.concat(
-        fg.sync(match, fgOptions).map((file) => ({
-          ...file,
-          handler: handler.name,
-        })),
+        fg.sync(match, fgOptions).map((file) => ({ ...file, loaderIdx: idx })),
       )
-    })
+    },
+  )
   global.logger.info(
     `Found ${files.length} files. Sorting the right order for the data cascade.`,
   )
@@ -381,10 +383,9 @@ const loadContent = async (config, context) => {
   global.logger.info(`Loading files...`)
   for (const file of files) {
     // finding the right loader for the file
-    const { handler, namespace, ...loaderOptions } = config.loaders.find(
-      (loader) => loader.handler.name === file.handler,
-    )
-    const options = namespace ? _.get(config, namespace, {}) : loaderOptions
+    const { handler, namespace, ...loaderOptions } =
+      config.loaders[file.loaderIdx]
+    const options = getOptions(config, namespace, loaderOptions)
     let pathname = path.join(config.dirs.content, file.path)
     let page = {}
     try {
@@ -549,7 +550,7 @@ const writeStaticSite = async (context, config) => {
         )
         if (writer) {
           const { handler, namespace, ...rest } = writer
-          const options = namespace ? _.get(config, namespace, {}) : rest
+          const options = getOptions(config, namespace, rest)
           try {
             await handler(page, options, config, context)
             global.logger.log(
@@ -577,7 +578,7 @@ const writeStaticSite = async (context, config) => {
   return await Promise.all(
     contextWriters.map(async (writer) => {
       const { handler, namespace, ...rest } = writer
-      const options = namespace ? _.get(config, namespace, {}) : rest
+      const options = getOptions(config, namespace, rest)
       if ("active" in options && !options.active) {
         global.logger.log(`- [${handler.name}]: writer not active. Skipping.`)
         return
