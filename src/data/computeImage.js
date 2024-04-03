@@ -82,5 +82,19 @@ const getImagePermalink = (
   if (!src) {
     return setDefaultImage ? defaultImage : null
   }
-  return getPageFromSource(src, page, pages, config).permalink
+  if (
+    src.startsWith("http") ||
+    src.startsWith("//") ||
+    src.startsWith("data:") ||
+    src.startsWith("@")
+  ) {
+    // external image, data URI or @attribute that will be resolved later
+    return src
+  }
+  const pageFound = getPageFromSource(src, page, pages, config)
+  if (!pageFound) {
+    // something went wrong
+    return src
+  }
+  return pageFound.permalink
 }

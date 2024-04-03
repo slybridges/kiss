@@ -139,43 +139,17 @@ const getLocale = (context, sep = "-") => {
 }
 
 // Tries to find the page corresponding to the source
-// Supports absolute, and relative paths and absolute @attributes
+// @attributes should have been resolved by mow
+// Supports absolute, and relative paths
 const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   // source may have URL entities encoded. Decode them
   source = decodeURI(source)
   const { throwIfNotFound = true } = options
-  // need to call new RegExp each time to reset the lastIndex
-  const atAttribute = new RegExp(AT_GENERIC_ATTRIBUTE_REGEX).exec(source)
-  let page = null
-  if (atAttribute) {
-    // value is an @attribute
-    const [fullMatch, attribute, value] = atAttribute // eslint-disable-line no-unused-vars
-    switch (attribute) {
-      case "permalink":
-        page = Object.values(pages).find((p) => p.permalink === value)
-        break
-      case "file":
-        if (!path.isAbsolute(value)) {
-          throw new Error(
-            `[getPageFromSource] Page '${parentPage._meta.id}': @file attribute '${value}' must be absolute at this point.`,
-          )
-        }
-        page = Object.values(pages).find(
-          (p) => p._meta.inputPath === path.join(config.dirs.content, value),
-        )
-        break
-      default:
-        throw new Error(
-          `[getPageFromSource] Unknown @attribute '${attribute}' on '${source}' in page '${parentPage._meta.id}'`,
-        )
-    }
-  } else {
-    // value is a path: compute the permalink in case it is a relative path
-    const permalink = getFullPath(source, parentPage.permalink, {
-      throwIfInvalid: true,
-    })
-    page = Object.values(pages).find((p) => p.permalink === permalink)
-  }
+  // value is a path: compute the permalink in case it is a relative path
+  const permalink = getFullPath(source, parentPage.permalink, {
+    throwIfInvalid: true,
+  })
+  const page = Object.values(pages).find((p) => p.permalink === permalink)
   if (!page) {
     if (throwIfNotFound) {
       throw new Error(
