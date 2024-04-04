@@ -2,10 +2,10 @@ const _ = require("lodash")
 const fs = require("fs")
 const path = require("path")
 
-// @ attibute format: @<attribute>:<value><terminator>
-// terminators: space, comma, newline, end of string, :, ', ",<, >, ), ], }
+// @ attribute format: @<attribute>:<value><terminator>
+// terminators: space, comma, newline, end of string, ', ",<, >, ), ], }
 const AT_GENERIC_ATTRIBUTE_REGEX =
-  /@([a-zA-Z0-9-_:]+):([^:,\s\n\]'"<>)}]+)(?=[:,\s\n\]'"<>)}]|$)/g
+  /@([a-zA-Z0-9-_]+):([^,\s\n\]'"<>)}]+)(?=[,\s\n\]'"<>)}]|$)/g
 
 const AT_FILE_ATTRIBUTE_REGEX =
   /@file:([^:,\s\n\]'"<>)}]+)(?=[:,\s\n\]'"<>)}]|$)/g

@@ -142,7 +142,7 @@ const defaultConfig = {
     {
       outputType: "HTML",
       handler: atAttributesContentTransform,
-      description: "Finding and processing @attributes in content",
+      description: "Finding and resolving @attributes in content",
     },
     {
       scope: "CONTEXT",
@@ -179,7 +179,6 @@ const defaultConfig = {
     // input path and format of images
     match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif", "**/*.webp"],
     overwrite: env === "production", // if false, won't regenerate the image if already in public dir
-    outputType: "IMAGE",
     sizes: ["(min-width: 1024px) 1024px", "100vw"],
     widths: [320, 640, 1024, 1366, "original"],
     // resizeOptions: { /*... any option accepted by sharp.resize()*/ }
