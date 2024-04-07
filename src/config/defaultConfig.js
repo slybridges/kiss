@@ -177,7 +177,7 @@ const defaultConfig = {
     // output format of images
     formats: ["jpeg"],
     // input path and format of images
-    match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.gif", "**/*.webp"],
+    match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.webp"],
     overwrite: env === "production", // if false, won't regenerate the image if already in public dir
     sizes: ["(min-width: 1024px) 1024px", "100vw"],
     widths: [320, 640, 1024, 1366, "original"],
