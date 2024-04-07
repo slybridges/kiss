@@ -153,7 +153,7 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   if (!page) {
     if (throwIfNotFound) {
       throw new Error(
-        `[getPageFromSource] Page '${source}' not found in page '${parentPage._meta.id}'`,
+        `Page '${source}' not found. Either it doesn't exist or it wasn't loaded.'`,
       )
     }
     return null

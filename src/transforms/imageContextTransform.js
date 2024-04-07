@@ -19,69 +19,39 @@ const imageContextTransform = async (context, options, config) => {
     const $ = cheerio.load(page._html)
     // images in <img> tag
     let imagesPromises = $("img").map(async (i, img) => {
-      let src = decodeURI($(img).attr("src"))
-      if (!img.attribs.alt) {
-        global.logger.warn(
-          `Image '${src}' on page '${page._meta.outputPath}' has no 'alt' attribute.`,
+      try {
+        context = await transformImageTag(
+          $,
+          img,
+          page,
+          context,
+          options,
+          config,
         )
-      }
-      if (isValidURL(src)) {
-        global.logger.log(
-          `Image '${src}' on page '${page._meta.outputPath}' is a URL. Skipping.`,
+      } catch (err) {
+        global.logger.error(
+          `Page '${id}', error transforming image: ${err.message}`,
         )
-        return
-      }
-      const imgPage = getPageFromSource(src, page, context.pages, config)
-      const imgId = imgPage._meta.id
-      const imageDetails = await getImageDetails(
-        imgPage,
-        id,
-        context,
-        options,
-        config,
-      )
-      context.pages[imgId] = imageDetails
-      if (!imageDetails._meta.is404) {
-        $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
-        context.pages[id]._html = $.html()
       }
     })
 
     // <meta> selectors
     let metaPromises = META_SELECTORS.map(async (selector) => {
-      const content = $(selector).attr("content")
-      if (!content) {
-        return
-      }
-      if (!isValidURL(content)) {
-        global.logger.warn(
-          `Image URL '${content}' in meta ${selector} on page '${page._meta.outputPath}' is not a valid URL.`,
+      try {
+        context = await transformMetaTag(
+          $,
+          selector,
+          page,
+          context,
+          options,
+          config,
         )
-        return
-      }
-      const url = new URL(content)
-      const imgPage = getPageFromSource(
-        url.pathname,
-        page,
-        context.pages,
-        config,
-      )
-      const imgId = imgPage._meta.id
-      const imageDetails = await getImageDetails(
-        imgPage,
-        id,
-        context,
-        options,
-        config,
-      )
-      context.pages[imgId] = imageDetails
-      if (!imageDetails._meta.is404) {
-        const newPathname = getDefaultDerivative(imageDetails).permalink
-        $(selector).attr("content", new URL(newPathname, url.origin))
-        context.pages[id]._html = $.html()
+      } catch (err) {
+        global.logger.error(
+          `Page '${id}', error transforming image in meta: ${err.message}`,
+        )
       }
     })
-
     await Promise.all([...imagesPromises, ...metaPromises])
   }
   return context
@@ -257,3 +227,82 @@ const getSrcset = (derivatives, format) =>
       return width ? url + " " + width + "w" : url
     })
     .join(", ")
+
+const transformImageTag = async ($, img, page, context, options, config) => {
+  const id = page._meta.id
+  let src = decodeURI($(img).attr("src"))
+  if (!img.attribs.alt) {
+    global.logger.warn(`Page '${id}': image '${src}' has no 'alt' attribute.`)
+  }
+  if (isValidURL(src)) {
+    global.logger.log(`Page '${id}': image '${src}' is a URL. Skipping.`)
+    return context
+  }
+  const imgPage = getPageFromSource(src, page, context.pages, config)
+  if (imgPage._meta.outputType !== "IMAGE") {
+    // image is handled by another loader. skipping.
+    global.logger.log(
+      `Page '${id}': image '${src}' is handled by another loader. Skipping.`,
+    )
+    return context
+  }
+  const imgId = imgPage._meta.id
+  const imageDetails = await getImageDetails(
+    imgPage,
+    id,
+    context,
+    options,
+    config,
+  )
+  context.pages[imgId] = imageDetails
+  if (!imageDetails._meta.is404) {
+    $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
+    context.pages[id]._html = $.html()
+  }
+  return context
+}
+
+const transformMetaTag = async (
+  $,
+  selector,
+  page,
+  context,
+  options,
+  config,
+) => {
+  const id = page._meta.id
+  const content = $(selector).attr("content")
+  if (!content) {
+    return context
+  }
+  if (!isValidURL(content)) {
+    global.logger.warn(
+      `Page '${id}' in meta '${selector}': image URL '${content}' is not a valid URL.`,
+    )
+    return context
+  }
+  const url = new URL(content)
+  const imgPage = getPageFromSource(url.pathname, page, context.pages, config)
+  if (imgPage._meta.outputType !== "IMAGE") {
+    // image is handled by another loader. skipping.
+    global.logger.log(
+      `Page '${id}': image '${url.pathname}' is handled by another loader. Skipping.`,
+    )
+    return context
+  }
+  const imgId = imgPage._meta.id
+  const imageDetails = await getImageDetails(
+    imgPage,
+    id,
+    context,
+    options,
+    config,
+  )
+  context.pages[imgId] = imageDetails
+  if (!imageDetails._meta.is404) {
+    const newPathname = getDefaultDerivative(imageDetails).permalink
+    $(selector).attr("content", new URL(newPathname, url.origin))
+    context.pages[id]._html = $.html()
+  }
+  return context
+}
