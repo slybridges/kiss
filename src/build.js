@@ -367,7 +367,9 @@ const loadContent = async (config, context) => {
         stats: true,
         ...matchOptions,
       }
-      global.logger.info(`Listing files matching ${JSON.stringify(match)}`)
+      global.logger.info(
+        `${handler.name}: listing files matching ${JSON.stringify(match)}`,
+      )
       files = files.concat(
         fg.sync(match, fgOptions).map((file) => ({ ...file, loaderIdx: idx })),
       )
