@@ -4,12 +4,11 @@ const path = require("path")
 const { AT_GENERIC_ATTRIBUTE_REGEX } = require("../helpers")
 
 const atAttributesContentTransform = (page, options, config, context) => {
-  let errorCount = 0
   // we need to go though all the keys in the page
   // that will be expensive, but YOLO
   for (const objKey in page) {
     if (typeof page[objKey] === "string" || typeof page[objKey] === "object") {
-      let [objValue, objErrorCount] = transformAtAttributesInObjValue(
+      let objValue = transformAtAttributesInObjValue(
         objKey,
         page[objKey],
         page,
@@ -17,14 +16,7 @@ const atAttributesContentTransform = (page, options, config, context) => {
         context,
       )
       page[objKey] = objValue
-      errorCount += objErrorCount
     }
-  }
-
-  if (errorCount > 0) {
-    throw new Error(
-      `Page '${page.permalink}': ${errorCount} errors found resolving @attributes`,
-    )
   }
 
   return page
@@ -41,7 +33,6 @@ const transformAtAttributesInObjValue = (
   config,
   context,
 ) => {
-  let errorCount = 0
   let match
   const resolvers = [
     { key: "data", handler: dataAttributeResolver },
@@ -57,7 +48,7 @@ const transformAtAttributesInObjValue = (
     // we need to go though all the keys in the object
     for (const key in objValue) {
       if (typeof objValue[key] === "string") {
-        let [newValue, newErrorCount] = transformAtAttributesInObjValue(
+        let newValue = transformAtAttributesInObjValue(
           key,
           objValue[key],
           page,
@@ -65,13 +56,12 @@ const transformAtAttributesInObjValue = (
           context,
         )
         objValue[key] = newValue
-        errorCount += newErrorCount
       }
     }
-    return [objValue, errorCount]
+    return objValue
   }
   if (typeof objValue !== "string") {
-    return [objValue, errorCount]
+    return objValue
   }
   // we cannot search and replace things as we go, as some attributes may overlap others (e.g. @id:home and @id:home:fr)
   // so first, we are going to find all the attributes
@@ -92,16 +82,14 @@ const transformAtAttributesInObjValue = (
     const resolver = resolvers.find((r) => r.key === attribute)
     if (!resolver) {
       global.logger.error(
-        `Page '${page.permalink}' in '${objKey}': unknown @attribute '${attribute}'`,
+        `Page '${page._meta.id}' in '${objKey}': unknown @attribute '${attribute}'`,
       )
-      errorCount++
       continue
     }
     const [result, error] = resolver.handler(value, page, config, context)
     if (error) {
-      global.logger.error(`Page '${page.permalink}' in '${objKey}': ${error}`)
+      global.logger.error(`Page '${page._meta.id}' in '${objKey}': ${error}`)
       objValue = objValue.replaceAll(fullMatch, value)
-      errorCount++
       continue
     }
     if (resolver.pageAttribute) {
@@ -109,19 +97,17 @@ const transformAtAttributesInObjValue = (
       // first we check if the page is excluded from write
       if (result.excludeFromWrite) {
         global.logger.error(
-          `Page '${page.permalink}' in '${objKey}': @${attribute} resolved '${value}' but page is marked as excludeFromWrite`,
+          `Page '${page._meta.id}' in '${objKey}': @${attribute} resolved '${value}' but page is marked as excludeFromWrite`,
         )
         objValue = objValue.replaceAll(fullMatch, value)
-        errorCount++
         continue
       }
       // then we check if the page has the attribute we need
       if (!result[resolver.pageAttribute]) {
         global.logger.error(
-          `Page '${page.permalink}' in '${objKey}': @${attribute} resolved '${value}' but page is missing attribute '${resolver.pageAttribute}'`,
+          `Page '${page._meta.id}' in '${objKey}': @${attribute} resolved '${value}' but page is missing attribute '${resolver.pageAttribute}'`,
         )
         objValue = objValue.replaceAll(fullMatch, value)
-        errorCount++
         continue
       }
       // replace the fullMatch with the page attribute
@@ -131,7 +117,7 @@ const transformAtAttributesInObjValue = (
       objValue = objValue.replaceAll(fullMatch, result)
     }
   }
-  return [objValue, errorCount]
+  return objValue
 }
 
 /** Resolvers */
