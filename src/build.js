@@ -358,7 +358,7 @@ const loadContent = async (config, context) => {
       const allOptions = getOptions(config, namespace, loaderOptions)
       const { match, matchOptions = {}, ...options } = allOptions
       if ("active" in options && !options.active) {
-        global.logger.log(`- [${handler.name}]: loader not active. Skipping.`)
+        global.logger.log(`[${handler.name}]: loader not active. Skipping.`)
         return
       }
       let fgOptions = {
@@ -367,8 +367,15 @@ const loadContent = async (config, context) => {
         stats: true,
         ...matchOptions,
       }
+      let extraOptions = []
+      if (namespace !== handler.name) {
+        extraOptions.push(`namespace: '${namespace}'`)
+      }
+      if (loaderOptions && Object.keys(loaderOptions).length > 0) {
+        extraOptions.push(`options: ${JSON.stringify(loaderOptions)}`)
+      }
       global.logger.info(
-        `Listing files matching ${JSON.stringify(match)} for ${handler.name}`,
+        `Listing files matching ${JSON.stringify(match)} for ${handler.name}${extraOptions.length > 0 ? ` (${extraOptions.join(", ")})` : ""}`,
       )
       files = files.concat(
         fg.sync(match, fgOptions).map((file) => ({ ...file, loaderIdx: idx })),

@@ -142,12 +142,13 @@ const defaultConfig = {
     {
       outputType: "HTML",
       handler: atAttributesContentTransform,
-      description: "Finding and resolving @attributes in content",
+      description: "Finding and resolving @attributes",
     },
     {
       scope: "CONTEXT",
       namespace: "image",
       handler: imageContextTransform,
+      description: "Finding and preparing images to optimize",
     },
   ],
   writers: [
