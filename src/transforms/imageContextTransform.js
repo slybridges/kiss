@@ -175,6 +175,9 @@ const getImageTag = (imgNode, page) => {
   }
   // more than just the jpeg format: wrap in <picture>/picture>
   const picture = $("<picture></picture>")
+  if (imgNode.attr("class")) {
+    $(picture).addClass(imgNode.attr("class"))
+  }
   for (const format of page.formats.filter((f) => f !== "jpeg")) {
     const source = $("<source/>")
     $(source).attr(attrPrefix + "sizes", getSizes(page.sizes))
