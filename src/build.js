@@ -368,7 +368,7 @@ const loadContent = async (config, context) => {
         ...matchOptions,
       }
       global.logger.info(
-        `${handler.name}: listing files matching ${JSON.stringify(match)}`,
+        `Listing files matching ${JSON.stringify(match)} for ${handler.name}`,
       )
       files = files.concat(
         fg.sync(match, fgOptions).map((file) => ({ ...file, loaderIdx: idx })),
@@ -376,7 +376,7 @@ const loadContent = async (config, context) => {
     },
   )
   global.logger.info(
-    `Found ${files.length} files. Sorting the right order for the data cascade.`,
+    `Found ${files.length} files. Sorting them for the data cascade.`,
   )
   // sorting and loading files
   // sort files to make sure index.* files are loaded first and post.* files last
