@@ -14,13 +14,10 @@ const computePermalink = ({ slug, _meta }, config, { pages }) => {
       // remove extensions
       .replace(new RegExp(/\.[a-z]+$/), "")
   }
-  let basePermalink
-  if (slug) {
-    // if the basename starts with post or index, the slug will be a directory
-    if (
-      _meta.basename.startsWith("post.") ||
-      _meta.basename.startsWith("index.")
-    ) {
+  if (_meta.outputType === "HTML" && slug) {
+    // if the inputPath ends with index.[ext] or post.[ext] we need to add a trailing slash
+    const inputPathRegexp = new RegExp(/\/(index|post)\.[\w]+$/)
+    if (inputPathRegexp.test(_meta.inputPath)) {
       slug += "/"
     }
   } else {
@@ -33,11 +30,12 @@ const computePermalink = ({ slug, _meta }, config, { pages }) => {
     }
   }
 
+  let basePermalink
   if (_meta.parent) {
-    // we want to look into the parent in case they have a customized permalink
+    // we want to look into the parent in case they have a custom permalink
     const parent = pages[_meta.parent]
     if (typeof parent.permalink === "function") {
-      // return the function itself hoping parent permalint will be computed later
+      // return the function itself hoping parent permalink will be computed later
       return computePermalink({ slug, _meta }, config, { pages })
     }
     if (typeof parent.permalink === "string") {
