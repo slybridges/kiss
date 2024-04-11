@@ -176,12 +176,13 @@ const defaultConfig = {
     defaultWidth: 1024,
     filename: defaultImageFilename,
     // output format of images
-    formats: ["jpeg"],
+    formats: ["original"],
     // input path and format of images
     match: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.webp"],
     overwrite: env === "production", // if false, won't regenerate the image if already in public dir
     sizes: ["(min-width: 1024px) 1024px", "100vw"],
     widths: [320, 640, 1024, 1366, "original"],
+    // defaultFormat: "jpeg", // if not present, will use formats[0]
     // resizeOptions: { /*... any option accepted by sharp.resize()*/ }
     // jpegOptions: { /*... any option accepted by sharp.jpeg()*/ }
     // webpOptions: { /*... any option accepted by sharp.webp()*/ }

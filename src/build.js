@@ -542,7 +542,7 @@ const runHandlerHook = (handler, options, config, data) => {
 }
 
 const writeStaticSite = async (context, config) => {
-  global.logger.info("Writing individual pages")
+  global.logger.info("Writing individual pages and images")
   await Promise.all(
     _.map(context.pages, async (page) => {
       if (page.excludeFromWrite) {

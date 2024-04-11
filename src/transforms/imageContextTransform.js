@@ -88,21 +88,34 @@ const getDefaultDerivative = (page) => {
     )
   }
   const derivative = derivatives.find(
-    (d) => d.format === defaultFormat && d.width === defaultWidth,
+    (d) =>
+      d.width === defaultWidth &&
+      (defaultFormat === "original"
+        ? d.isOriginalFormat
+        : d.format === defaultFormat),
   )
   return derivative ? derivative : derivatives[derivatives.length - 1]
 }
 
-const getDerivatives = (page, options, config) => {
+const getDerivatives = (imgPage, options, config) => {
   let derivatives = []
-  for (const format of options.formats) {
+  for (let format of options.formats) {
+    if (format === "original") {
+      // keep the original format
+      format = imgPage._meta.format
+      if (["jpg", "jpe"].includes(format)) {
+        // sharp only understands 'jpeg'
+        format = "jpeg"
+      }
+    }
     const resizeOptions = options.resizeOptions || {}
     for (const width of options.widths) {
-      const filename = options.filename(page._meta.name, format, width)
-      const permalink = path.join(page.permalinkDir, filename)
+      const filename = options.filename(imgPage._meta.name, format, width)
+      const permalink = path.join(imgPage.permalinkDir, filename)
       let derivative = {
         format,
         formatOptions: options[format + "Options"] || {},
+        isOriginalFormat: format === imgPage._meta.format,
         outputPath: path.join(config.dirs.public, permalink),
         permalink,
         width,
@@ -110,7 +123,8 @@ const getDerivatives = (page, options, config) => {
       if (width === "original") {
         derivative.resize = false
       } else if (typeof width === "number") {
-        if (width > page._meta.width) {
+        if (width > imgPage._meta.width) {
+          // skip resizing if the image is smaller than the requested width
           continue
         }
         derivative.resize = {
@@ -159,9 +173,10 @@ const getImageDetails = async (imgPage, sourceId, context, options, config) => {
   return imgPage
 }
 
-const getImageTag = (imgNode, page) => {
+const getImageTag = (imgNode, page, options) => {
+  const defaultFormat = options.defaultFormat || options.formats[0]
   const $ = cheerio.load("")
-  const srcset = getSrcset(page.derivatives, "jpeg")
+  const srcset = getSrcset(page.derivatives, defaultFormat)
   const attrPrefix = page.blur ? "data-" : ""
   if (page.blur) {
     $(imgNode).addClass("lazy")
@@ -170,15 +185,17 @@ const getImageTag = (imgNode, page) => {
   $(imgNode).attr(attrPrefix + "src", getDefaultDerivative(page).permalink)
   $(imgNode).attr(attrPrefix + "srcset", srcset)
   $(imgNode).attr(attrPrefix + "sizes", getSizes(page.sizes))
-  if (_.isEqual(page.formats, ["jpeg"])) {
+  if (page.formats.length === 1) {
+    // only one format: return the image node
     return imgNode
   }
-  // more than just the jpeg format: wrap in <picture>/picture>
+  // more than just one format: wrap in <picture>/picture>
   const picture = $("<picture></picture>")
   if (imgNode.attr("class")) {
+    // copy the class attribute to the <picture> element
     $(picture).addClass(imgNode.attr("class"))
   }
-  for (const format of page.formats.filter((f) => f !== "jpeg")) {
+  for (const format of page.formats.filter((f) => f !== defaultFormat)) {
     const source = $("<source/>")
     $(source).attr(attrPrefix + "sizes", getSizes(page.sizes))
     $(source).attr(attrPrefix + "srcset", getSrcset(page.derivatives, format))
@@ -223,7 +240,9 @@ const getSizes = (sizes) => sizes.join(", ")
 
 const getSrcset = (derivatives, format) =>
   derivatives
-    .filter((d) => d.format === format)
+    .filter((d) =>
+      format === "original" ? d.isOriginalFormat : d.format === format,
+    )
     .map((src) => {
       const url = src.permalink
       const width = _.get(src, "resize.width")
@@ -259,7 +278,7 @@ const transformImageTag = async ($, img, page, context, options, config) => {
   )
   context.pages[imgId] = imageDetails
   if (!imageDetails._meta.is404) {
-    $(img).replaceWith(getImageTag($(img).clone(), imageDetails))
+    $(img).replaceWith(getImageTag($(img).clone(), imageDetails, options))
     context.pages[id]._html = $.html()
   }
   return context
