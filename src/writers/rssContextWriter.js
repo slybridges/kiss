@@ -91,14 +91,18 @@ const pageObject = (page, options, config) => {
 
   if (page.author) {
     let author = []
-    if (page.author.name) {
-      author.push({ name: page.author.name })
-    }
-    if (page.author.email) {
-      author.push({ email: page.author.email })
-    }
-    if (page.author.uri) {
-      author.push({ uri: page.author.uri })
+    if (typeof page.author === "object") {
+      if (page.author.name) {
+        author.push({ name: page.author.name })
+      }
+      if (page.author.email) {
+        author.push({ email: page.author.email })
+      }
+      if (page.author.uri) {
+        author.push({ uri: page.author.uri })
+      }
+    } else {
+      author.push({ name: page.author })
     }
     entry.push({ author: author })
   }
