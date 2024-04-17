@@ -191,10 +191,6 @@ const getImageTag = (imgNode, page, options) => {
   }
   // more than just one format: wrap in <picture>/picture>
   const picture = $("<picture></picture>")
-  if (imgNode.attr("class")) {
-    // copy the class attribute to the <picture> element
-    $(picture).addClass(imgNode.attr("class"))
-  }
   for (const format of page.formats.filter((f) => f !== defaultFormat)) {
     const source = $("<source/>")
     $(source).attr(attrPrefix + "sizes", getSizes(page.sizes))
