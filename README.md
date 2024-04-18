@@ -106,3 +106,13 @@ kiss codebase is small and easy to navigate:
 - finally, head over to `data/initialPageData.js` and scroll down to the bottom to read about the default page metadata and dynamic computations
 
 Alternatively check out [kiss-starter](https://github.com/slybridges/kiss-starter) for a real life minimal example.
+
+## Troubleshooting
+
+### I get a `Error: ENOSPC: System limit for number of file watchers reached` error on Linux when I run `kiss start` or `kiss watch` on my large project
+
+You can increase the limit with the [following command](https://stackoverflow.com/questions/55763428/react-native-error-enospc-system-limit-for-number-of-file-watchers-reached):
+
+```
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+```
