@@ -1,8 +1,8 @@
 const { parseISO } = require("date-fns")
 const { readJsonSync } = require("fs-extra")
 
-const jsonLoader = (path, options, page, pages, config) => {
-  let fileData = readJsonSync(path)
+const jsonLoader = (inputPath, options, page, pages, config) => {
+  let fileData = readJsonSync(inputPath)
   const published = fileData[config.defaults.pagePublishedAttribute]
   const updated = fileData[config.defaults.pageUpdatedAttribute]
   if (published && typeof published === "string") {

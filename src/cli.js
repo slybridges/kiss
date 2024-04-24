@@ -27,4 +27,9 @@ yargs(hideBin(process.argv))
     default: false,
     describe: "Won't exit(1) on build errors",
   })
+  .option("incremental", {
+    boolean: true,
+    default: false,
+    describe: "Performs incremental builds on watch (experimental)",
+  })
   .demandCommand(1, "Enter a command").argv

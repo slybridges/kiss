@@ -5,60 +5,90 @@ const fg = require("fast-glob")
 const path = require("path")
 
 const { loadConfig } = require("./config")
-const { getParentId, relativeToAbsoluteAttributes } = require("./helpers")
+const {
+  computeParentId,
+  getBuildEntries,
+  getPageFromInputPath,
+  relativeToAbsoluteAttributes,
+} = require("./helpers")
 const { baseLoader } = require("./loaders")
 const { setGlobalLogger } = require("./logger")
 
-const build = async (options = {}, config = null) => {
+const hasOwnProperty = Object.prototype.hasOwnProperty
+
+const build = async (options = {}, lastBuild = {}, version = 0) => {
   console.time("Build time")
 
   const { configFile, unsafeBuild, verbosity, watchMode } = options
 
   setGlobalLogger(verbosity)
 
-  let context = {
-    pages: {},
-  }
+  let { config } = lastBuild
 
-  global.logger.section("Loading config and initial context")
   if (!config) {
+    global.logger.section("Loading config and initial context")
     config = loadConfig({ configFile })
   }
-  context = { ...context, ...config.context }
 
-  if (config.hooks.loadLibs.length > 0) {
-    global.logger.section("Running loadLibs hooks")
-    config = runConfigHooks(config, "loadLibs")
+  const buildFlags = computeBuildFlags(
+    options,
+    config,
+    lastBuild.context,
+    version,
+  )
+
+  let context = lastBuild.context || { pages: {}, ...config.context }
+
+  if (options.incremental) {
+    // compute the file ids that will need to be updated
+    buildFlags.buildPageIds = computeBuildPageIDs(context, buildFlags)
   }
 
-  if (config.hooks.preLoad.length > 0) {
+  if (buildFlags.loadLibs) {
+    global.logger.section("Running loadLibs hooks")
+    config = runConfigHooks(config, "loadLibs", buildFlags)
+  }
+
+  if (buildFlags.preLoad) {
     global.logger.section("Running preLoad hooks")
     context = runConfigHooks(config, "preLoad", context)
   }
 
-  global.logger.section(
-    `Loading content from '${config.dirs.content}' directory`,
-  )
-  context.pages = await loadContent(config, context)
+  if (buildFlags.content) {
+    if (!options.incremental) {
+      global.logger.section(
+        `Loading content from '${config.dirs.content}' directory`,
+      )
+    }
+    context.pages = await loadContent(config, context, buildFlags)
+  }
 
-  if (config.hooks.postLoad.length > 0) {
+  if (buildFlags.postLoad) {
     global.logger.section("Running postLoad hooks")
     context = runConfigHooks(config, "postLoad", context)
   }
 
-  global.logger.section("Computing dynamic page context")
-  context = computeAllPagesData(context, config)
+  if (buildFlags.dynamicData) {
+    global.logger.section("Computing dynamic page context")
+    context = computeAllPagesData(context, config, buildFlags)
+  }
 
-  global.logger.section("Computing data views")
-  context = computeDataViews(context, config)
+  if (buildFlags.dataViews) {
+    global.logger.section("Computing data views")
+    context = computeDataViews(context, config)
+  }
 
-  global.logger.section(`Applying transforms`)
-  context = await applyTransforms(context, config)
+  if (buildFlags.transform) {
+    global.logger.section(`Applying transforms`)
+    context = await applyTransforms(context, config, buildFlags)
+  }
 
-  global.logger.section(`Writing site to '${config.dirs.public}' directory`)
-  await writeStaticSite(context, config)
+  if (buildFlags.write) {
+    global.logger.section(`Writing site to '${config.dirs.public}' directory`)
+    await writeStaticSite(context, config, buildFlags)
+  }
 
-  if (config.hooks.postWrite.length > 0) {
+  if (buildFlags.postWrite) {
     global.logger.section("Running postWrite hooks")
     runConfigHooks(config, "postWrite", context)
   }
@@ -84,16 +114,19 @@ const build = async (options = {}, config = null) => {
   } else if (warningCount > 0) {
     global.logger.warn(`${warningCount} warning(s) found.`)
   } else {
-    global.logger.success(`Static build completed!`)
+    global.logger.success(`Build completed!`)
   }
   console.timeEnd("Build time")
+
+  return { context, config }
 }
 
 module.exports = build
 
 /** Private **/
 
-const applyTransforms = async (context, config) => {
+const applyTransforms = async (context, config, buildFlags) => {
+  const { buildPageIds } = buildFlags
   if (!config.transforms || config.transforms.length === 0) {
     global.logger.info(`No transform registered.`)
     return context
@@ -119,7 +152,7 @@ const applyTransforms = async (context, config) => {
         options.description || `Transforming context using ${handler.name}`
       global.logger.info(message)
       try {
-        context = await handler(context, options, config)
+        context = await handler(context, options, config, buildFlags)
       } catch (err) {
         global.logger.error(
           `[${handler.name}] Error during transform:\n`,
@@ -127,12 +160,21 @@ const applyTransforms = async (context, config) => {
         )
       }
     } else {
-      // page transforms
-      const message =
+      const entries = getBuildEntries(context, buildFlags).filter(
+        ([, page]) => !outputType || outputType === page._meta.outputType,
+      )
+      if (entries.length === 0) {
+        continue
+      }
+      let message =
         options.description ||
-        `Transforming ${outputType || "all"} pages using ${handler.name}`
+        `Transforming ${outputType || "all"} pages using '${handler.name}'`
+      if (buildPageIds.length > 0) {
+        message += ` (incremental)`
+      }
       global.logger.info(message)
-      for (let [id, page] of Object.entries(context.pages)) {
+      // page transforms
+      for (let [id, page] of entries) {
         if (outputType && page._meta.outputType !== outputType) {
           continue
         }
@@ -149,6 +191,84 @@ const applyTransforms = async (context, config) => {
     }
   }
   return context
+}
+
+const computeBuildFlags = (options, config, lastContext, version) => {
+  let flags = {
+    incremental: options.incremental,
+    config: true,
+    loadLibs: config.hooks.loadLibs.length > 0,
+    preLoad: config.hooks.preLoad.length > 0,
+    content: true,
+    postLoad: config.hooks.postLoad.length > 0,
+    dynamicData: true,
+    dataViews: true,
+    transform: true,
+    write: true,
+    postWrite: config.hooks.postWrite.length > 0,
+    version: version,
+  }
+  if (!options.incremental || !lastContext || !options.file) {
+    // full build
+    return flags
+  }
+  // only change event is supported for now, 'add' and 'unlink' will trigger a full rebuild
+  if (options.event !== "change") {
+    return flags
+  }
+  // incremental build: for now we only react on content file changes
+  if (options.file.startsWith(config.dirs.content)) {
+    flags.contentFile = options.file
+    flags.config = false
+    flags.loadLibs = false
+    flags.preLoad = false
+    flags.postLoad = false
+    flags.dynamicData = true
+    flags.dataViews = false
+    flags.postWrite = false
+  } else if (options.file.startsWith(config.dirs.template)) {
+    // templates are always related to the template directory
+    flags.templateFile = path.relative(config.dirs.template, options.file)
+    flags.config = false
+    flags.loadLibs = false
+    flags.preLoad = false
+    flags.content = false
+    flags.postLoad = false
+    flags.dynamicData = false
+    flags.dataViews = false
+    flags.postWrite = false
+  }
+  return flags
+}
+
+const computeBuildPageIDs = (context, buildFlags) => {
+  let buildPageIds = []
+  if (buildFlags.contentFile) {
+    const page = getPageFromInputPath(buildFlags.contentFile, context.pages)
+    if (!page) {
+      global.logger.warn(
+        `Could not find existing page for '${buildFlags.contentFile}'.`,
+      )
+      return []
+    }
+    const contentPathObject = path.parse(buildFlags.contentFile)
+    if (contentPathObject.name === "index") {
+      // it's an index file, we must return its id and all descendants
+      buildPageIds = [page._meta.id, ...page._meta.descendants]
+    } else {
+      // not an index file, we only need to return the current id
+      buildPageIds = [page._meta.id]
+    }
+  } else if (buildFlags.templateFile) {
+    // mark all pages using that template for rebuild
+    // Note: if the template is a sub-template of another template
+    // (e.g. that is included() in a main template),
+    // this will not work and we'll rebuild everything
+    buildFlags.buildPageIds = Object.values(context.pages)
+      .filter((page) => page.layout === buildFlags.templateFile)
+      .map((page) => page._meta.id)
+  }
+  return buildPageIds
 }
 
 // load content derived from existing pages
@@ -170,7 +290,7 @@ const computeDataViews = (context, config) => {
   return context
 }
 
-const computePageData = (data, config, context, options = {}) => {
+const computePageData = (data, config, context, buildFlags, options = {}) => {
   let computed = {
     data: null,
     pendingCount: 0,
@@ -186,16 +306,22 @@ const computePageData = (data, config, context, options = {}) => {
   }
   for (let key in data) {
     let value = data[key]
-    //_.forEach(data, (value, key) => {
-    if (typeof key === "string" && key.endsWith("_no_cascade")) {
-      // this is an override key, computing original key value
-      key = key.split("_no_cascade")[0]
-    } else if (
-      Object.prototype.hasOwnProperty.call(data, key + "_no_cascade")
-    ) {
-      // there is a data override attribute, bail out.
-      continue
+
+    if (typeof key === "string") {
+      if (key.endsWith("_no_cascade")) {
+        // this is an override key, computing original key value
+        key = key.split("_no_cascade")[0]
+      } else if (hasOwnProperty.call(data, key + "_no_cascade")) {
+        // there is a data override attribute, bail out.
+        continue
+      } else if (buildFlags.incremental) {
+        if (key.endsWith("_last_build")) {
+          value = data[key].func
+          key = key.split("_last_build")[0]
+        }
+      }
     }
+
     if (typeof value === "function") {
       // it's a function we need to compute the result
       let currentPending = 0
@@ -211,6 +337,13 @@ const computePageData = (data, config, context, options = {}) => {
         if (typeof computed.data[key] === "function") {
           // function returned another function. we'll need another round
           computed.pendingCount += 1
+        } else if (buildFlags.incremental) {
+          // saving the original function and the build version it was built for
+          // so that we can reuse it in the next build
+          computed.data[key + "_last_build"] = {
+            func: value,
+            version: buildFlags.version,
+          }
         }
       } else {
         // data needs other dependencies to be computed first
@@ -219,7 +352,13 @@ const computePageData = (data, config, context, options = {}) => {
       }
     } else if (_.isPlainObject(value) || _.isArray(value)) {
       // it's an object: we need to see if there is data to compute inside
-      let subComputed = computePageData(value, config, context, options)
+      let subComputed = computePageData(
+        value,
+        config,
+        context,
+        buildFlags,
+        options,
+      )
       computed.data[key] = subComputed.data
       computed.pendingCount += subComputed.pendingCount
     } else {
@@ -229,16 +368,17 @@ const computePageData = (data, config, context, options = {}) => {
   return computed
 }
 
-const computeAllPagesData = (context, config) => {
+const computeAllPagesData = (context, config, buildFlags) => {
   let pendingTotal = 0
   let round = 1
   let computed = {}
 
   while (round === 1 || pendingTotal > 0) {
+    let entries = getBuildEntries(context, buildFlags)
     pendingTotal = 0
-    _.forEach(context.pages, (page, key) => {
+    entries.forEach(([key, page]) => {
       try {
-        computed = computePageData(page, config, context)
+        computed = computePageData(page, config, context, buildFlags)
       } catch (err) {
         global.logger.error(
           `[computePageData] Error during computing page data for page id '${page._meta.id}'\n`,
@@ -249,10 +389,9 @@ const computeAllPagesData = (context, config) => {
       pendingTotal += computed.pendingCount
     })
     if (pendingTotal > 0 && round + 1 > config.defaults.maxComputingRounds) {
-      global.logger.error(
-        ```Could not compute all data in ${config.defaults.maxComputingRounds} rounds. Check for circular
-dependencies or increase the 'maxComputingRounds' value.```,
-      )
+      let message = `Could not compute all data in ${config.defaults.maxComputingRounds} rounds.`
+      message += ` Check for circular dependencies or increase the 'config.defaults.maxComputingRounds' value.`
+      global.logger.error(message)
       break
     }
     if (pendingTotal > 0) {
@@ -312,7 +451,7 @@ const countPendingDependencies = (page, pages, deps = []) => {
 
 const directoryCollectionLoader = (pathname, options, pages, config) => {
   const parentName = path.dirname(pathname)
-  const parentNameId = getParentId(pathname, config)
+  const parentNameId = computeParentId(pathname, config)
   if (!parentNameId || pages[parentNameId]) {
     // parent already in the collection
     return pages
@@ -343,64 +482,177 @@ const isComputableValue = (value) =>
   typeof value === "function" ||
   (_.isPlainObject(value) && value._kissCheckDependencies)
 
+const getFiles = (
+  loaderId,
+  config,
+  match = null,
+  contentPathInMatch = false,
+  fileOptions = {},
+) => {
+  const loader = config.loaders[loaderId]
+  if (!loader) {
+    global.logger.error(`Loader with id ${loaderId} not found.`)
+    return []
+  }
+  // eslint-disable-next-line no-unused-vars
+  const { handler, namespace, ...loaderOptions } = loader
+  const allOptions = getOptions(config, namespace, loaderOptions)
+  const { matchOptions = {} } = allOptions
+  if (typeof match === "string") {
+    match = [match]
+  } else if (!match) {
+    match = allOptions.match
+  }
+  const fgOptions = {
+    ...matchOptions,
+    markDirectories: true,
+    stats: true,
+  }
+  if (!contentPathInMatch) {
+    fgOptions.cwd = contentPathInMatch ? "." : config.dirs.content
+  }
+  return fg.sync(match, fgOptions).map((file) => ({
+    ...file,
+    loaderId,
+    // not sure why but it looks like sometimes fg returns the full path in the name
+    name: file.name.includes(path.sep) ? path.basename(file.name) : file.name,
+    ...fileOptions,
+  }))
+}
+
 const getOptions = (config, namespace, options) => {
   const nameSpaceOptions = _.get(config, namespace, {})
   return { ...nameSpaceOptions, ...options }
 }
 
-const loadContent = async (config, context) => {
-  let pages = {}
+const loadContent = async (config, context, { incremental, contentFile }) => {
+  let pages = context.pages
   let files = []
-  // We first need to fetch all files that match all loaders
-  // So that we can sort them in the right order before loading them
-  // This is essential for the data cascade to work properly
-  config.loaders.forEach(
-    ({ handler, namespace, source, ...loaderOptions }, idx) => {
-      if (source && source !== "file") {
-        return
-      }
-      const allOptions = getOptions(config, namespace, loaderOptions)
-      const { match, matchOptions = {}, ...options } = allOptions
-      if ("active" in options && !options.active) {
-        global.logger.log(`[${handler.name}]: loader not active. Skipping.`)
-        return
-      }
-      let fgOptions = {
-        cwd: config.dirs.content,
-        markDirectories: true,
-        stats: true,
-        ...matchOptions,
-      }
-      let extraOptions = []
-      if (namespace !== handler.name) {
-        extraOptions.push(`namespace: '${namespace}'`)
-      }
-      if (loaderOptions && Object.keys(loaderOptions).length > 0) {
-        extraOptions.push(`options: ${JSON.stringify(loaderOptions)}`)
-      }
-      global.logger.info(
-        `Listing files matching ${JSON.stringify(match)} for ${handler.name}${extraOptions.length > 0 ? ` (${extraOptions.join(", ")})` : ""}`,
-      )
+
+  if (contentFile) {
+    // incremental build: one content file changed
+    // files here are relative to the content directory
+    const page = getPageFromInputPath(contentFile, pages)
+
+    if (page) {
+      const contentFileObject = path.parse(contentFile)
+      const isIndexFile = contentFileObject.name === "index"
+      const loaderId = isIndexFile
+        ? page._meta.indexLoaderId
+        : page._meta.loaderId
+
+      // path.relative(config.dirs.content, contentFile)
+      // add to files to load
       files = files.concat(
-        fg.sync(match, fgOptions).map((file) => ({ ...file, loaderIdx: idx })),
+        getFiles(loaderId, config, contentFile, true, {
+          pageId: page._meta.id,
+        }),
       )
-    },
-  )
-  global.logger.info(
-    `Found ${files.length} files. Sorting them for the data cascade.`,
-  )
+
+      console.log(files.map((f) => f.name))
+
+      // check if we need to load other files too
+      if (contentFileObject.name === "index") {
+        // it's an index file, there may be more files to load
+        if (contentFile !== page._meta.inputPath) {
+          // a post overwrote the index file, we need to load the post file too
+          const postFile = getFiles(
+            page._meta.loaderId,
+            config,
+            page._meta.inputPath,
+            true,
+            {
+              pageId: page._meta.id,
+            },
+          )
+          files = files.concat(postFile)
+        }
+        // we will need to reload all descendants
+        page._meta.descendants.forEach((id) => {
+          const { _meta } = pages[id]
+          if (_meta.source !== "file") {
+            // we dont reload computed pages for now
+            return
+          }
+          if (
+            _meta.indexInputPath &&
+            _meta.indexInputPath !== _meta.inputPath
+          ) {
+            // a post overwrote the index file of that descendant
+            // we need to load the post file too
+            const indexFile = getFiles(
+              _meta.indexLoaderId,
+              config,
+              _meta.indexInputPath,
+              true,
+              { pageId: _meta.id },
+            )
+            files = files.concat(indexFile)
+          }
+          // get descendant file
+          const descendantFiles = getFiles(
+            _meta.loaderId,
+            config,
+            _meta.inputPath,
+            true,
+            { pageId: _meta.id },
+          )
+          files = files.concat(descendantFiles)
+        })
+      }
+    }
+  } else {
+    // We first need to fetch all files
+    // So that we can sort them in the right order before loading them
+    // This is essential for the data cascade to work properly
+    config.loaders.forEach(
+      ({ handler, namespace, source, ...loaderOptions }, idx) => {
+        if (source && source !== "file") {
+          return
+        }
+        const options = getOptions(config, namespace, loaderOptions)
+        if ("active" in options && !options.active) {
+          global.logger.log(`[${handler.name}]: loader not active. Skipping.`)
+          return
+        }
+        let extraOptions = []
+        if (namespace !== handler.name) {
+          extraOptions.push(`namespace: '${namespace}'`)
+        }
+        if (loaderOptions && Object.keys(loaderOptions).length > 0) {
+          extraOptions.push(`options: ${JSON.stringify(loaderOptions)}`)
+        }
+        // full build: load all files matching this loader
+        global.logger.info(
+          `Listing files matching ${JSON.stringify(options.match)} for ${handler.name}${extraOptions.length > 0 ? ` (${extraOptions.join(", ")})` : ""}`,
+        )
+        files = files.concat(getFiles(idx, config))
+      },
+    )
+  }
+  if (contentFile) {
+    global.logger.info(`Reloading ${files.length} files...`)
+  } else {
+    global.logger.info(`Found ${files.length} files. Loading...`)
+  }
   // sorting and loading files
   // sort files to make sure index.* files are loaded first and post.* files last
   // in order to respect the data cascade principle
   files = sortFiles(files)
-  global.logger.info(`Loading files...`)
   for (const file of files) {
     // finding the right loader for the file
     const { handler, namespace, ...loaderOptions } =
-      config.loaders[file.loaderIdx]
+      config.loaders[file.loaderId]
     const options = getOptions(config, namespace, loaderOptions)
-    let pathname = path.join(config.dirs.content, file.path)
-    let page = {}
+    let pathname = contentFile
+      ? file.path
+      : path.join(config.dirs.content, file.path)
+    let page = null
+    // if (file.pageId) {
+    //   // incremental build
+    //   // loading previous data
+    //   page = pages[file.pageId]
+    // }
     try {
       // load parent folders, if any
       pages = directoryCollectionLoader(pathname, options, pages, config)
@@ -409,36 +661,43 @@ const loadContent = async (config, context) => {
         _meta: {
           fileCreated: file.stats.ctime,
           fileModified: file.stats.mtime,
+          loaderId: file.loaderId,
         },
       }
+      if (file.name.startsWith("index.")) {
+        // also need to save the loader index under indexLoaderId
+        page._meta.indexLoaderId = file.loaderId
+      }
       // load base data including _meta infos and based on ParentData
-      page = baseLoader(pathname, options, page, pages, config)
+      page = baseLoader(pathname, options, page, pages, config, incremental)
       // load content specific data
       page = await handler(pathname, options, page, context, config)
       // relative @attributes to absolute
       page = relativeToAbsoluteAttributes(page, options, config)
       pages[page._meta.id] = page
-      global.logger.log(`- [${handler.name}] loaded '${page._meta.inputPath}'`)
+      global.logger.log(`- [${handler.name}] loaded '${pathname}'`)
+      if (contentFile) {
+        console.log(page)
+      }
     } catch (err) {
       global.logger.error(
-        `- [${handler.name}] Error loading '${_.get(
-          page,
-          "_meta.inputPath",
-        )}'\n`,
+        `- [${handler.name}] Error loading '${pathname}'\n`,
         err.stack,
       )
     }
   }
-  // computed loaders
-  _.filter(config.loaders, (loader) => loader.source === "computed").forEach(
-    (loader) => {
-      const { description, handler, ...options } = loader
-      const message =
-        description || `Loading computed pages using ${handler.name}`
-      global.logger.info(message)
-      pages = handler(pages, options, config)
-    },
-  )
+  if (!contentFile) {
+    // computed loaders
+    _.filter(config.loaders, (loader) => loader.source === "computed").forEach(
+      (loader) => {
+        const { description, handler, ...options } = loader
+        const message =
+          description || `Loading computed pages using ${handler.name}`
+        global.logger.info(message)
+        pages = handler(pages, options, config)
+      },
+    )
+  }
   return pages
 }
 
@@ -545,10 +804,12 @@ const runHandlerHook = (handler, options, config, data) => {
   }
 }
 
-const writeStaticSite = async (context, config) => {
-  global.logger.info("Writing individual pages and images")
+const writeStaticSite = async (context, config, buildFlags) => {
+  let message = "Writing individual pages and images"
+  global.logger.info(message)
+  const entries = getBuildEntries(context, buildFlags)
   await Promise.all(
-    _.map(context.pages, async (page) => {
+    entries.map(async ([, page]) => {
       if (page.excludeFromWrite) {
         global.logger.log(
           `- Page '${page._meta.id}' is marked as excludeFromWrite. Skipping.`,

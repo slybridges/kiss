@@ -9,6 +9,11 @@ const { resetGlobalLogger } = require("./logger")
 
 const build = require("./build.js")
 
+let lastBuild = { context: null, config: null }
+let buildVersion = 0
+let isBuildRunning = false
+let changeBacklog = []
+
 const serve = (options, config) => {
   if (!config) {
     config = loadConfig(options)
@@ -48,14 +53,41 @@ const watch = async (options = {}, config) => {
       config.configFile,
       ...config.dirs.watchExtra,
     ],
-    { awaitWriteFinish: true },
+    { awaitWriteFinish: true, ignoreInitial: true },
   )
 
-  // rebuild on file changes
-  fileWatcher.on(
-    "all",
-    _.debounce((event, file) => rebuild(options, event, file), 500),
-  )
+  // initial build
+  lastBuild = await build(options)
+
+  if (options.incremental) {
+    console.info("Incremental build mode enabled")
+    // TODO: need to load config
+    // rebuild only the changed file
+    fileWatcher.on("all", async (event, file) => {
+      if (isBuildRunning) {
+        changeBacklog.push({ event, file })
+        return
+      }
+      isBuildRunning = true
+      lastBuild = await incrementalRebuild(options, lastBuild, event, file)
+      while (changeBacklog.length > 0) {
+        const change = changeBacklog.shift()
+        lastBuild = incrementalRebuild(
+          lastBuild,
+          options,
+          change.event,
+          change.file,
+        )
+      }
+      isBuildRunning = false
+    })
+  } else {
+    // rebuild all on file changes
+    fileWatcher.on(
+      "all",
+      _.debounce((event, file) => rebuild(options, event, file), 500),
+    )
+  }
 
   // remove chokidar watcher
   let signals = [
@@ -69,8 +101,11 @@ const watch = async (options = {}, config) => {
 
   // close watchers on exit
   signals.forEach((signal) => {
-    process.on(signal, () => {
+    process.on(signal, (code) => {
       fileWatcher.close()
+      if (signal === "uncaughtException") {
+        global.logger.error("kiss encountered a fatal error\n", code)
+      }
       process.exit(1)
     })
   })
@@ -107,8 +142,18 @@ const preparePublicFolder = async (config) => {
 }
 
 const rebuild = (options, event, file) => {
-  console.info(`\nChange detected: [${event}] ${file}`)
+  global.logger.section(`\nChange detected: [${event}] ${file}`)
   clearRequireCache()
   resetGlobalLogger(options.verbosity)
-  build(options)
+  return build(options)
+}
+
+const incrementalRebuild = async (options, lastBuild, event, file) => {
+  buildVersion++
+  global.logger.section(
+    `\nChange detected: [${event}] ${file}. Incremental rebuild #${buildVersion}...`,
+  )
+  clearRequireCache()
+  resetGlobalLogger(options.verbosity)
+  return build({ event, file, ...options }, lastBuild, buildVersion)
 }
