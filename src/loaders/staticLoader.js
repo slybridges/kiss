@@ -1,6 +1,6 @@
 const _ = require("lodash")
 
-const staticLoader = (id, options, { permalink, _meta }) => {
+const staticLoader = (inputPath, options, { permalink, _meta }) => {
   return {
     permalink,
     _meta: {

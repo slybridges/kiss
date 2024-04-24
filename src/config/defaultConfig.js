@@ -138,6 +138,7 @@ const defaultConfig = {
       outputType: "HTML",
       handler: nunjucksContentTransform,
       description: "Applying Nunjucks templates to content",
+      isTemplateHandler: true, // handler in charge of rendering the content using template. Used for incremental builds
     },
     {
       outputType: "HTML",

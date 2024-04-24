@@ -3,7 +3,7 @@ const cheerio = require("cheerio")
 const path = require("path")
 const sharp = require("sharp")
 
-const { getPageFromSource, isValidURL } = require("../helpers")
+const { getBuildEntries, getPageFromSource, isValidURL } = require("../helpers")
 
 const META_SELECTORS = [
   "meta[property='og:image']",
@@ -11,8 +11,10 @@ const META_SELECTORS = [
   "meta[property='twitter:image']",
 ]
 
-const imageContextTransform = async (context, options, config) => {
-  for (let [id, page] of Object.entries(context.pages)) {
+const imageContextTransform = async (context, options, config, buildFlags) => {
+  const entries = getBuildEntries(context, buildFlags)
+
+  for (let [id, page] of entries) {
     if (!page._html || !page.permalink) {
       continue
     }
