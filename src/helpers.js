@@ -254,10 +254,6 @@ const omitDeep = (object, keys) => {
   }
   keys.forEach((key) => (object = _.omit(object, key)))
   for (var key in object) {
-    // we also remove keys ending with '_last_build' as they are only added for the incremental builds
-    if (typeof key === "string" && key.endsWith("_last_build")) {
-      delete object[key]
-    }
     if (Object.prototype.hasOwnProperty.call(object, key)) {
       object[key] = omitDeep(object[key], keys)
     }
@@ -372,10 +368,7 @@ const omitNoCascadeAttributes = (obj) => {
   _.forEach(obj, (value, key) => {
     if (_.isPlainObject(value) || _.isArray(value)) {
       result[key] = omitNoCascadeAttributes(value)
-    } else if (
-      typeof key === "number" ||
-      (!key.endsWith("_no_cascade") && !key.endsWith("_last_build"))
-    ) {
+    } else if (typeof key === "number" || !key.endsWith("_no_cascade")) {
       result[key] = value
     }
   })

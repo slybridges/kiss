@@ -39,6 +39,10 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   let context = lastBuild.context || { pages: {}, ...config.context }
 
+  if (buildFlags.incremental && !context._buildFuncs) {
+    context._buildFuncs = {}
+  }
+
   if (options.incremental) {
     // compute the file ids that will need to be updated
     buildFlags.buildPageIds = computeBuildPageIDs(context, buildFlags)
@@ -46,7 +50,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   if (buildFlags.loadLibs) {
     global.logger.section("Running loadLibs hooks")
-    config = runConfigHooks(config, "loadLibs", buildFlags)
+    config = runConfigHooks(config, "loadLibs", null, buildFlags)
   }
 
   if (buildFlags.preLoad) {
@@ -292,13 +296,17 @@ const computeDataViews = (context, config) => {
 
 const computePageData = (data, config, context, buildFlags, options = {}) => {
   let computed = {
-    data: null,
+    data: _.isArray(data) ? [...data] : { ...data },
     pendingCount: 0,
   }
-  if (_.isArray(data)) {
-    computed.data = [...data]
-  } else {
-    computed.data = { ...data }
+  if (buildFlags.incremental) {
+    if (options.buildFuncs) {
+      computed.buildFuncs = options.buildFuncs
+    } else if (_.isArray(data)) {
+      computed.buildFuncs = []
+    } else if (_.isPlainObject(data)) {
+      computed.buildFuncs = {}
+    }
   }
   if (!options.topLevelData) {
     // for recursive call
@@ -314,11 +322,6 @@ const computePageData = (data, config, context, buildFlags, options = {}) => {
       } else if (hasOwnProperty.call(data, key + "_no_cascade")) {
         // there is a data override attribute, bail out.
         continue
-      } else if (buildFlags.incremental) {
-        if (key.endsWith("_last_build")) {
-          value = data[key].func
-          key = key.split("_last_build")[0]
-        }
       }
     }
 
@@ -332,18 +335,16 @@ const computePageData = (data, config, context, buildFlags, options = {}) => {
           value.kissDependencies,
         )
       }
+      if (buildFlags.incremental) {
+        // we save the function for later incremental builds
+        // so that we can replay them in the data cascade
+        computed.buildFuncs[key] = value
+      }
       if (currentPending == 0) {
         computed.data[key] = value(options.topLevelData, config, context)
         if (typeof computed.data[key] === "function") {
           // function returned another function. we'll need another round
           computed.pendingCount += 1
-        } else if (buildFlags.incremental) {
-          // saving the original function and the build version it was built for
-          // so that we can reuse it in the next build
-          computed.data[key + "_last_build"] = {
-            func: value,
-            version: buildFlags.version,
-          }
         }
       } else {
         // data needs other dependencies to be computed first
@@ -352,15 +353,15 @@ const computePageData = (data, config, context, buildFlags, options = {}) => {
       }
     } else if (_.isPlainObject(value) || _.isArray(value)) {
       // it's an object: we need to see if there is data to compute inside
-      let subComputed = computePageData(
-        value,
-        config,
-        context,
-        buildFlags,
-        options,
-      )
+      let subComputed = computePageData(value, config, context, buildFlags, {
+        ...options,
+        buildFuncs: computed.buildFuncs[key],
+      })
       computed.data[key] = subComputed.data
       computed.pendingCount += subComputed.pendingCount
+      if (buildFlags.incremental) {
+        computed.buildFuncs[key] = subComputed.buildFuncs
+      }
     } else {
       computed.data[key] = value
     }
@@ -378,7 +379,16 @@ const computeAllPagesData = (context, config, buildFlags) => {
     pendingTotal = 0
     entries.forEach(([key, page]) => {
       try {
-        computed = computePageData(page, config, context, buildFlags)
+        const computeOptions = buildFlags.incremental
+          ? { buildFuncs: context._buildFuncs[key] }
+          : {}
+        computed = computePageData(
+          page,
+          config,
+          context,
+          buildFlags,
+          computeOptions,
+        )
       } catch (err) {
         global.logger.error(
           `[computePageData] Error during computing page data for page id '${page._meta.id}'\n`,
@@ -387,6 +397,10 @@ const computeAllPagesData = (context, config, buildFlags) => {
       }
       context.pages[key] = computed.data
       pendingTotal += computed.pendingCount
+      if (buildFlags.incremental) {
+        // save the build functions for incremental builds
+        context._buildFuncs[key] = computed.buildFuncs
+      }
     })
     if (pendingTotal > 0 && round + 1 > config.defaults.maxComputingRounds) {
       let message = `Could not compute all data in ${config.defaults.maxComputingRounds} rounds.`
@@ -525,7 +539,7 @@ const getOptions = (config, namespace, options) => {
   return { ...nameSpaceOptions, ...options }
 }
 
-const loadContent = async (config, context, { incremental, contentFile }) => {
+const loadContent = async (config, context, { contentFile }) => {
   let pages = context.pages
   let files = []
 
@@ -548,8 +562,6 @@ const loadContent = async (config, context, { incremental, contentFile }) => {
           pageId: page._meta.id,
         }),
       )
-
-      console.log(files.map((f) => f.name))
 
       // check if we need to load other files too
       if (contentFileObject.name === "index") {
@@ -647,12 +659,7 @@ const loadContent = async (config, context, { incremental, contentFile }) => {
     let pathname = contentFile
       ? file.path
       : path.join(config.dirs.content, file.path)
-    let page = null
-    // if (file.pageId) {
-    //   // incremental build
-    //   // loading previous data
-    //   page = pages[file.pageId]
-    // }
+    let page = {}
     try {
       // load parent folders, if any
       pages = directoryCollectionLoader(pathname, options, pages, config)
@@ -669,16 +676,17 @@ const loadContent = async (config, context, { incremental, contentFile }) => {
         page._meta.indexLoaderId = file.loaderId
       }
       // load base data including _meta infos and based on ParentData
-      page = baseLoader(pathname, options, page, pages, config, incremental)
+      page = baseLoader(pathname, options, page, pages, config)
+      if (file.pageId && context._buildFuncs[file.pageId]) {
+        // load previous versions of the dynamic data
+        page = _.merge(page, context._buildFuncs[file.pageId])
+      }
       // load content specific data
       page = await handler(pathname, options, page, context, config)
       // relative @attributes to absolute
       page = relativeToAbsoluteAttributes(page, options, config)
       pages[page._meta.id] = page
       global.logger.log(`- [${handler.name}] loaded '${pathname}'`)
-      if (contentFile) {
-        console.log(page)
-      }
     } catch (err) {
       global.logger.error(
         `- [${handler.name}] Error loading '${pathname}'\n`,
@@ -701,7 +709,7 @@ const loadContent = async (config, context, { incremental, contentFile }) => {
   return pages
 }
 
-const runConfigHooks = (config, event, data) => {
+const runConfigHooks = (config, event, data, buildFlags) => {
   const hooks = _.get(config.hooks, event)
   if (!hooks || hooks.length === 0) {
     global.logger.log(`No hooks registered for ${event}`)
@@ -709,7 +717,7 @@ const runConfigHooks = (config, event, data) => {
   }
   hooks.forEach((hook) => {
     if (typeof hook === "function") {
-      data = runHandlerHook(hook, {}, config, data)
+      data = runHandlerHook(hook, {}, config, data, buildFlags)
     } else {
       const { action, handler, command, ...options } = hook
       switch (action) {
@@ -720,7 +728,7 @@ const runConfigHooks = (config, event, data) => {
           runExecHook(command, options)
           break
         case "run":
-          data = runHandlerHook(handler, options, config, data)
+          data = runHandlerHook(handler, options, config, data, buildFlags)
           break
         default: {
           global.logger.error(`Unknown hook action: ${action}`)
@@ -793,11 +801,11 @@ const sortFiles = (files) => {
   })
 }
 
-const runHandlerHook = (handler, options, config, data) => {
+const runHandlerHook = (handler, options, config, data, buildFlags) => {
   const message = options.description || `Running ${handler.name}`
   global.logger.info(message)
   try {
-    return handler(options, config, data)
+    return handler(options, config, data, buildFlags)
   } catch (err) {
     global.logger.error(`Error in ${handler.name}:\n`, err.stack)
     return data
