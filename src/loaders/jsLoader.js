@@ -1,7 +1,7 @@
 const path = require("path")
 
-const jsLoader = (id, options, page) => {
-  const filePath = path.resolve(page._meta.inputPath)
+const jsLoader = (inputPath, options, page) => {
+  const filePath = path.resolve(inputPath)
   const fileData = require(filePath)
   return { ...page, ...fileData }
 }

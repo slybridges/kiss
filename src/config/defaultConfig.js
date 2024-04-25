@@ -138,6 +138,7 @@ const defaultConfig = {
       outputType: "HTML",
       handler: nunjucksContentTransform,
       description: "Applying Nunjucks templates to content",
+      isTemplateHandler: true, // handler in charge of rendering the content using template. Used for incremental builds
     },
     {
       outputType: "HTML",
@@ -208,7 +209,7 @@ const defaultConfig = {
   },
   sitedata: {
     active: true,
-    omit: ["_html"], // keys to omits from context
+    omit: ["_html", "_buildFuncs"], // keys to omits from context
     space: env === "production" ? null : 2,
     target: env === "production" ? process.env.KISS_DATA_FILE : "sitedata.json",
   },
