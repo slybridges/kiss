@@ -36,7 +36,7 @@ const computePermalink = ({ slug, _meta }, config, { pages }) => {
     const parent = pages[_meta.parent]
     if (typeof parent.permalink === "function") {
       // return the function itself hoping parent permalink will be computed later
-      return computePermalink({ slug, _meta }, config, { pages })
+      return computePermalink
     }
     if (typeof parent.permalink === "string") {
       basePermalink = parent.permalink
