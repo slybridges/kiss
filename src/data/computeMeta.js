@@ -47,7 +47,7 @@ const computeIsPost = ({ content, isPost }) => isPost || !!content
 
 computeIsPost.kissDependencies = ["content", "isPost"]
 
-const computeOutputPath = ({ permalink }, config) => {
+const computeOutputPath = ({ permalink, _meta }, config) => {
   if (!permalink) {
     return null
   }
@@ -56,13 +56,14 @@ const computeOutputPath = ({ permalink }, config) => {
   if (outputPath.endsWith("/")) {
     return path.join(outputPath, "index.html")
   }
-  if (path.extname(outputPath) === "") {
+  // don't rely on path.extname because permalink can include dots
+  if (_meta.outputType === "HTML" && !outputPath.endsWith(".html")) {
     return outputPath + ".html"
   }
   return outputPath
 }
 
-computeOutputPath.kissDependencies = ["permalink"]
+computeOutputPath.kissDependencies = ["permalink", "_meta.outputType"]
 
 module.exports = {
   computeAscendants: computeAscendants,
