@@ -295,7 +295,11 @@ const countPendingDependencies = (page, pages, deps = []) => {
         pendingCount++
       } else {
         // assume a single page id
-        pendingCount += countPendingDependencies(depValue, pages, restDeps)
+        pendingCount += countPendingDependencies(
+          pages[depValue],
+          pages,
+          restDeps,
+        )
       }
     } else {
       throw new Error(
