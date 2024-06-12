@@ -24,6 +24,7 @@ const pageObject = (page, options, config) => {
   if (lastMod) {
     try {
       lastMod = formatISO(lastMod)
+      // eslint-disable-next-line no-unused-vars
     } catch (err) {
       global.logger.warn(
         `[${this.name}]: cannot format lastmod date '${lastMod}' to ISO for page '${page.permalink}'. Setting null.`,
