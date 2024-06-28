@@ -43,9 +43,13 @@ const computeIsCollection = ({ isCollection, _meta }) =>
 
 computeIsCollection.kissDependencies = ["isCollection", "_meta.children"]
 
-const computeIsPost = ({ content, isPost }) => isPost || !!content
+// In case a page is programmatically generated based only on the YAML front matter,
+// it may not have a content but still be considered a post. We look into the
+// _meta.isCollection to determine if the page is a collection or not in that case.
+const computeIsPost = ({ content, isPost, _meta }) =>
+  isPost || !!content || !_meta.isCollection
 
-computeIsPost.kissDependencies = ["content", "isPost"]
+computeIsPost.kissDependencies = ["content", "isPost", "_meta.isCollection"]
 
 const computeOutputPath = ({ permalink, _meta }, config) => {
   if (!permalink) {
