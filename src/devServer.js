@@ -69,9 +69,9 @@ const watch = async (options = {}, config) => {
 
   // close watchers on exit
   signals.forEach((signal) => {
-    process.on(signal, (code) => {
+    process.on(signal, () => {
       fileWatcher.close()
-      process.exit(code)
+      process.exit(1)
     })
   })
 }
