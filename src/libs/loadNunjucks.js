@@ -6,7 +6,6 @@ const loadNunjucks = (_, config, data, buildFlags = {}) => {
     // (in normal mode, config is reloaded which reloads the lib and clears the cache)
     watch: !!buildFlags.incremental,
   }
-  console.log("nunjucks", buildFlags)
   // set default nunjucks template dir
   config.libs.nunjucks = nunjucks.configure(config.dirs.template, options)
   // clear nunjucks caches (for when in watch mode)

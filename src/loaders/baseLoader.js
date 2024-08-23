@@ -11,7 +11,7 @@ const baseLoader = (inputPath, options, page, pages, config) => {
     basename = ""
   }
   const parentData = parentId
-    ? getParentPage(pages, parentId, inputPathObject.name === "post")
+    ? getParentPage(pages, parentId /*, inputPathObject.name === "post"*/)
     : {}
   let isDirectory = options.isDirectory || inputPath.endsWith("/")
   let id = options.id || computePageId(inputPath, config)
@@ -51,9 +51,20 @@ const baseLoader = (inputPath, options, page, pages, config) => {
     outputType,
     collectionGroup,
   })
-  if (inputPathObject.name === "index") {
-    // save the input path in indexInputPath in case it gets overwritten later on by a post.* file
-    page._meta.indexInputPath = inputPath
+  // if (inputPathObject.name === "index") {
+  //   // save the input path in indexInputPath in case it gets overwritten later on by a post.* file
+  //   page._meta.indexInputPath = inputPath
+  // }
+  if (inputPathObject.name === "post") {
+    // check if we are overriding an existing index file
+    if (outputType === "HTML" && pages[id]) {
+      const pageInputPathObject = path.parse(pages[id]._meta.inputPath)
+      if (pageInputPathObject.name === "index") {
+        // we are overriding an existing index file
+        // so we need to remove the parent reference
+        page._meta._isOverridingIndex = true
+      }
+    }
   }
   return page
 }

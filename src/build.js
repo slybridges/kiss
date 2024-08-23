@@ -257,8 +257,18 @@ const computeBuildPageIDs = (context, buildFlags) => {
     }
     const contentPathObject = path.parse(buildFlags.contentFile)
     if (contentPathObject.name === "index") {
+      let descendants = page._meta.descendants
+      if (descendants.length === 0 && page._meta.id.endsWith("/_index")) {
+        console.log(
+          "index page overwritten by post. Getting descendants from post file",
+        )
+        // it's an index file that got overwritten by a post file
+        // descendants are in the post file
+        const postFileId = page._meta.id.replace(/\/_index$/, "")
+        descendants = context.pages[postFileId]._meta.descendants
+      }
       // it's an index file, we must return its id and all descendants
-      buildPageIds = [page._meta.id, ...page._meta.descendants]
+      buildPageIds = [page._meta.id, ...descendants]
     } else {
       // not an index file, we only need to return the current id
       buildPageIds = [page._meta.id]
@@ -539,23 +549,19 @@ const getOptions = (config, namespace, options) => {
   return { ...nameSpaceOptions, ...options }
 }
 
-const loadContent = async (config, context, { contentFile }) => {
+const loadContent = async (config, context, { contentFile, incremental }) => {
   let pages = context.pages
   let files = []
 
-  if (contentFile) {
+  if (incremental && contentFile) {
     // incremental build: one content file changed
+    // -> reload the file + all their ascendants + any descendant
     // files here are relative to the content directory
     const page = getPageFromInputPath(contentFile, pages)
 
     if (page) {
-      const contentFileObject = path.parse(contentFile)
-      const isIndexFile = contentFileObject.name === "index"
-      const loaderId = isIndexFile
-        ? page._meta.indexLoaderId
-        : page._meta.loaderId
+      const loaderId = page._meta.loaderId
 
-      // path.relative(config.dirs.content, contentFile)
       // add to files to load
       files = files.concat(
         getFiles(loaderId, config, contentFile, true, {
@@ -564,54 +570,68 @@ const loadContent = async (config, context, { contentFile }) => {
       )
 
       // check if we need to load other files too
-      if (contentFileObject.name === "index") {
-        // it's an index file, there may be more files to load
-        if (contentFile !== page._meta.inputPath) {
-          // a post overwrote the index file, we need to load the post file too
-          const postFile = getFiles(
-            page._meta.loaderId,
-            config,
-            page._meta.inputPath,
-            true,
-            {
-              pageId: page._meta.id,
-            },
-          )
-          files = files.concat(postFile)
-        }
-        // we will need to reload all descendants
-        page._meta.descendants.forEach((id) => {
-          const { _meta } = pages[id]
-          if (_meta.source !== "file") {
-            // we dont reload computed pages for now
-            return
-          }
-          if (
-            _meta.indexInputPath &&
-            _meta.indexInputPath !== _meta.inputPath
-          ) {
-            // a post overwrote the index file of that descendant
-            // we need to load the post file too
-            const indexFile = getFiles(
-              _meta.indexLoaderId,
-              config,
-              _meta.indexInputPath,
-              true,
-              { pageId: _meta.id },
-            )
-            files = files.concat(indexFile)
-          }
-          // get descendant file
-          const descendantFiles = getFiles(
-            _meta.loaderId,
-            config,
-            _meta.inputPath,
-            true,
-            { pageId: _meta.id },
-          )
-          files = files.concat(descendantFiles)
-        })
+
+      let ascendants = page._meta.ascendants || []
+      let descendants = page._meta.descendants || []
+
+      // it's an index file, there may be more files to load
+      if (page._meta.id.endsWith("/_index")) {
+        // a post overwrote the index file, we need to load the post file too
+        const postPage = pages[page._meta.id.replace(/\/_index$/, "")]
+        const postFile = getFiles(
+          postPage._meta.loaderId,
+          config,
+          postPage._meta.inputPath,
+          true,
+          {
+            pageId: postPage._meta.id,
+          },
+        )
+        files = files.concat(postFile)
+        // ascendants and descendants are in the post file
+        ascendants = postPage._meta.ascendants
+        descendants = postPage._meta.descendants
       }
+
+      // load all ascendants if any so that we can regenerate them during write
+      ascendants.forEach((id) => {
+        const ascendant = pages[id]
+        if (ascendant._meta.source !== "file") {
+          // we dont reload computed pages for now
+          return
+        }
+        // get ascendant file
+        const ascendantFiles = getFiles(
+          ascendant._meta.loaderId,
+          config,
+          ascendant._meta.inputPath,
+          true,
+          { pageId: ascendant._meta.id },
+        )
+        files = files.concat(ascendantFiles)
+      })
+
+      //  load all descendants, if any
+      descendants.forEach((id) => {
+        const { _meta } = pages[id]
+        if (_meta.source !== "file") {
+          // we dont reload computed pages for now
+          return
+        }
+        // get descendant file
+        const descendantFiles = getFiles(
+          _meta.loaderId,
+          config,
+          _meta.inputPath,
+          true,
+          { pageId: _meta.id },
+        )
+        files = files.concat(descendantFiles)
+      })
+      console.log(
+        "files to reload",
+        files.map((f) => f.path),
+      )
     }
   } else {
     // We first need to fetch all files
@@ -671,15 +691,26 @@ const loadContent = async (config, context, { contentFile }) => {
           loaderId: file.loaderId,
         },
       }
-      if (file.name.startsWith("index.")) {
-        // also need to save the loader index under indexLoaderId
-        page._meta.indexLoaderId = file.loaderId
-      }
+      // if (file.name.startsWith("index.")) {
+      //   // also need to save the loader index under indexLoaderId
+      //   page._meta.indexLoaderId = file.loaderId
+      // }
       // load base data including _meta infos and based on ParentData
       page = baseLoader(pathname, options, page, pages, config)
-      if (file.pageId && context._buildFuncs[file.pageId]) {
-        // load previous versions of the dynamic data
-        page = _.merge(page, context._buildFuncs[file.pageId])
+      if (incremental) {
+        if (page._meta._isOverridingIndex) {
+          // save the previous version under the {id}/_index id for incremental cascade
+          const indexPage = _.cloneDeep(pages[page._meta.id])
+          const indexId = `${page._meta.id}/_index`
+          indexPage._meta.id = indexId
+          // mark the file as SKIP as to not trigger a transforms and write
+          indexPage._meta.outputType = "SKIP"
+          pages[indexId] = indexPage
+        }
+        if (file.pageId && context._buildFuncs[file.pageId]) {
+          // load previous versions of the dynamic data
+          page = _.merge(page, context._buildFuncs[file.pageId])
+        }
       }
       // load content specific data
       page = await handler(pathname, options, page, context, config)
@@ -826,6 +857,8 @@ const writeStaticSite = async (context, config, buildFlags) => {
         global.logger.log(
           `- Page '${page._meta.id}' has no permalink. Skipping.`,
         )
+      } else if (page._meta.outputType === "SKIP") {
+        global.logger.log(`- Page '${page._meta.id}' has SKIP type. Skipping.`)
       } else {
         const writer = config.writers.find(
           (writer) => writer.outputType === page._meta.outputType,

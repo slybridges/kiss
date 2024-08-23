@@ -45,7 +45,7 @@ const initialPageData = {
     descendants: computeDescendants,
     fileCreated: null,
     fileModified: null,
-    indexInputPath: null,
+    // indexInputPath: null,
     inputPath: "",
     isCollection: computeIsCollection,
     isDirectory: false,

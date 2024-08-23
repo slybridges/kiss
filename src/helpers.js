@@ -71,7 +71,7 @@ const getAbsoluteURL = (url = "", baseURL) => {
 const getBuildEntries = (context, buildFlags) => {
   const { pages } = context
   const { buildPageIds } = buildFlags
-  if (buildPageIds.length > 0) {
+  if (buildPageIds?.length > 0) {
     return buildPageIds.map((id) => [id, pages[id]])
   }
   return Object.entries(pages)
@@ -167,8 +167,8 @@ const getLocale = (context, sep = "-") => {
 const getPageFromInputPath = (inputPath, pages) => {
   const pageValues = Object.values(pages)
   let page = pageValues.find(
-    (p) =>
-      p._meta.inputPath === inputPath || p._meta.indexInputPath === inputPath,
+    (p) => p._meta.inputPath === inputPath,
+    /* || p._meta.indexInputPath === inputPath,*/
   )
   return page
 }
@@ -203,17 +203,14 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
 }
 
 // returns the parent sanitizing the data for the cascade
-const getParentPage = (pages, id, isPostAsking = true) => {
-  let parent = pages[id]
+const getParentPage = (pages, id) => {
+  let parent = pages[id + "/_index"] || pages[id]
   if (!parent) {
     global.logger.error(`Couldn't find parent with id '${id}'`)
     return null
   }
-  // if child is a post, dont't omit the attributes below
-  if (!isPostAsking) {
-    const attributesToOmit = ["_meta.indexInputPath", "_meta.indexLoaderId"]
-    parent = _.omit(parent, attributesToOmit)
-  }
+  // _isOverridingIndex is not cascading
+  parent = _.omit(parent, ["_meta._isOverridingIndex"])
   return omitNoCascadeAttributes(parent)
 }
 
