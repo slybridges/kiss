@@ -130,7 +130,7 @@ module.exports = build
 /** Private **/
 
 const applyTransforms = async (context, config, buildFlags) => {
-  const { buildPageIds } = buildFlags
+  const { buildPageIds, incremental } = buildFlags
   if (!config.transforms || config.transforms.length === 0) {
     global.logger.info(`No transform registered.`)
     return context
@@ -173,7 +173,7 @@ const applyTransforms = async (context, config, buildFlags) => {
       let message =
         options.description ||
         `Transforming ${outputType || "all"} pages using '${handler.name}'`
-      if (buildPageIds.length > 0) {
+      if (incremental && buildPageIds.length > 0) {
         message += ` (incremental)`
       }
       global.logger.info(message)
@@ -355,7 +355,7 @@ const computePageData = (data, config, context, buildFlags, options = {}) => {
       // it's an object: we need to see if there is data to compute inside
       let subComputed = computePageData(value, config, context, buildFlags, {
         ...options,
-        buildFuncs: computed.buildFuncs[key],
+        buildFuncs: buildFlags.incremental ? computed.buildFuncs[key] : null,
       })
       computed.data[key] = subComputed.data
       computed.pendingCount += subComputed.pendingCount
