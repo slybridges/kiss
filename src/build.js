@@ -222,12 +222,15 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     // full build
     return flags
   }
-  // only change event is supported for now, 'add' and 'unlink' will trigger a full rebuild
+  // only 'change' event is supported for now in incremental mode
+  // 'add' and 'unlink' will trigger a full rebuild
   if (options.event !== "change") {
     return flags
   }
-  // incremental build: for now we only react on content file changes
+  // incremental build
   if (options.file.startsWith(config.dirs.content)) {
+    // Content change: we need to reload the changed content, recompute the data,
+    // do the transforms and write the files
     flags.contentFile = options.file
     flags.config = false
     flags.loadLibs = false
@@ -237,7 +240,9 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     flags.dataViews = true
     flags.postWrite = false
   } else if (options.file.startsWith(config.dirs.template)) {
-    // templates are always related to the template directory
+    // Template change: no need to reload the content or recompute the data.
+    // We only need to perform the transforms and write the files
+    // Templates are always related to the template directory
     flags.templateFile = path.relative(config.dirs.template, options.file)
     flags.config = false
     flags.loadLibs = false
@@ -248,9 +253,14 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     flags.dataViews = false
     flags.postWrite = false
   }
+  // other change: full rebuild
   return flags
 }
 
+// return the list of ids impacted by a file change which are
+// the file itself, its ascendants and descendants in case of a content file change
+// or all pages using a template in case of a template file change
+// if there is no file change, return an empty list
 const computeBuildPageIDs = (context, buildFlags) => {
   let buildPageIds = []
   if (buildFlags.contentFile) {
