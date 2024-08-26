@@ -3,7 +3,8 @@ const _ = require("lodash")
 
 const { computePageId, computeParentId, getParentPage } = require("../helpers")
 
-const baseLoader = (inputPath, options, page, pages, config) => {
+const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
+  const { file, buildVersion } = options
   const inputPathObject = path.parse(inputPath)
   let parentId = computeParentId(inputPath, config)
   let basename = inputPathObject.base
@@ -11,12 +12,12 @@ const baseLoader = (inputPath, options, page, pages, config) => {
     basename = ""
   }
   const parentData = parentId
-    ? getParentPage(pages, parentId /*, inputPathObject.name === "post"*/)
+    ? getParentPage(pages, parentId, inputPathObject.name === "post")
     : {}
   let isDirectory = options.isDirectory || inputPath.endsWith("/")
   let id = options.id || computePageId(inputPath, config)
   let outputType = options.outputType || "HTML"
-  let collectionGroup = options.collectionGroup
+  let collectionGroup = options.collectionGroup || "directory"
   if (outputType === "HTML") {
     // only files converted as HTML can override
     // they parent entry
@@ -51,20 +52,19 @@ const baseLoader = (inputPath, options, page, pages, config) => {
     outputType,
     collectionGroup,
   })
-  // if (inputPathObject.name === "index") {
-  //   // save the input path in indexInputPath in case it gets overwritten later on by a post.* file
-  //   page._meta.indexInputPath = inputPath
-  // }
-  if (inputPathObject.name === "post") {
-    // check if we are overriding an existing index file
-    if (outputType === "HTML" && pages[id]) {
-      const pageInputPathObject = path.parse(pages[id]._meta.inputPath)
-      if (pageInputPathObject.name === "index") {
-        // we are overriding an existing index file
-        // so we need to remove the parent reference
-        page._meta._isOverridingIndex = true
-      }
-    }
+  if (inputPathObject.name === "index") {
+    // save the input path in indexInputPath in case it gets overwritten later on by a post.* file
+    page._meta.indexInputPath = inputPath
+    // also need to save the loader index
+    page._meta.indexLoaderId = file?.loaderId
+  }
+  if (file) {
+    page._meta.fileCreated = file.stats.ctime
+    page._meta.fileModified = file.stats.mtime
+    page._meta.loaderId = file.loaderId
+  }
+  if (buildVersion !== undefined) {
+    page._meta.buildVersion = buildVersion
   }
   return page
 }

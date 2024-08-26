@@ -167,8 +167,8 @@ const getLocale = (context, sep = "-") => {
 const getPageFromInputPath = (inputPath, pages) => {
   const pageValues = Object.values(pages)
   let page = pageValues.find(
-    (p) => p._meta.inputPath === inputPath,
-    /* || p._meta.indexInputPath === inputPath,*/
+    (p) =>
+      p._meta.inputPath === inputPath || p._meta.indexInputPath === inputPath,
   )
   return page
 }
@@ -203,14 +203,17 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
 }
 
 // returns the parent sanitizing the data for the cascade
-const getParentPage = (pages, id) => {
-  let parent = pages[id + "/_index"] || pages[id]
+const getParentPage = (pages, id, isPostAsking) => {
+  let parent = pages[id]
   if (!parent) {
     global.logger.error(`Couldn't find parent with id '${id}'`)
     return null
   }
-  // _isOverridingIndex is not cascading
-  parent = _.omit(parent, ["_meta._isOverridingIndex"])
+  if (!isPostAsking) {
+    // omit attributes that shouldn't cascade, unless the page asking is a post
+    const attributesToOmit = ["_meta.indexInputPath", "_meta.indexLoaderId"]
+    parent = _.omit(parent, attributesToOmit)
+  }
   return omitNoCascadeAttributes(parent)
 }
 

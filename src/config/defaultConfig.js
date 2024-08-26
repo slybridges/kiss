@@ -209,7 +209,7 @@ const defaultConfig = {
   },
   sitedata: {
     active: true,
-    omit: ["_html", "_buildFuncs"], // keys to omits from context
+    omit: ["_html"], // keys to omits from context
     space: env === "production" ? null : 2,
     target: env === "production" ? process.env.KISS_DATA_FILE : "sitedata.json",
   },
