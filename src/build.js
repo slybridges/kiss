@@ -47,6 +47,10 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
         "Change impacts pages with IDs",
         buildFlags.buildPageIds,
       )
+    } else if (!lastBuild.context) {
+      global.logger.info(
+        "Incremental build mode. Performing initial full build...",
+      )
     } else {
       global.logger.info(
         "Incremental rebuild not possible. Performing full rebuild...",
@@ -61,7 +65,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   if (buildFlags.preLoad) {
     global.logger.section("Running preLoad hooks")
-    context = runConfigHooks(config, "preLoad", context)
+    context = runConfigHooks(config, "preLoad", context, buildFlags)
   }
 
   if (buildFlags.content) {
@@ -75,7 +79,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   if (buildFlags.postLoad) {
     global.logger.section("Running postLoad hooks")
-    context = runConfigHooks(config, "postLoad", context)
+    context = runConfigHooks(config, "postLoad", context, buildFlags)
   }
 
   if (buildFlags.dynamicData) {
@@ -100,7 +104,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   if (buildFlags.postWrite) {
     global.logger.section("Running postWrite hooks")
-    runConfigHooks(config, "postWrite", context)
+    runConfigHooks(config, "postWrite", context, buildFlags)
   }
 
   global.logger.section("Build complete")
@@ -228,31 +232,45 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     return flags
   }
   // incremental build
+  flags.file = options.file
+  flags.config = false // FIXME: full rebuild on config file changes
+  flags.content = false
+  flags.dynamicData = false
+  flags.dataViews = false
   if (options.file.startsWith(config.dirs.content)) {
     // Content change: we need to reload the changed content, recompute the data,
     // do the transforms and write the files
+    flags.content = true
     flags.contentFile = options.file
-    flags.config = false
-    flags.loadLibs = false
-    flags.preLoad = false
-    flags.postLoad = false
     flags.dynamicData = true
     flags.dataViews = true
-    flags.postWrite = false
   } else if (options.file.startsWith(config.dirs.template)) {
     // Template change: no need to reload the content or recompute the data.
     // We only need to perform the transforms and write the files
     // Templates are always related to the template directory
     flags.templateFile = path.relative(config.dirs.template, options.file)
-    flags.config = false
-    flags.loadLibs = false
-    flags.preLoad = false
-    flags.content = false
-    flags.postLoad = false
-    flags.dynamicData = false
-    flags.dataViews = false
-    flags.postWrite = false
   }
+  // compute hook flags
+  flags.loadLibs = computeIncrementalHookBuildFlag(
+    config.hooks.loadLibs,
+    options.file,
+    lastContext,
+  )
+  flags.preLoad = computeIncrementalHookBuildFlag(
+    config.hooks.preLoad,
+    options.file,
+    lastContext,
+  )
+  flags.postLoad = computeIncrementalHookBuildFlag(
+    config.hooks.postLoad,
+    options.file,
+    lastContext,
+  )
+  flags.postWrite = computeIncrementalHookBuildFlag(
+    config.hooks.postWrite,
+    options.file,
+    lastContext,
+  )
   // other change: full rebuild
   return flags
 }
@@ -287,6 +305,23 @@ const computeBuildPageIDs = (context, buildFlags) => {
       .map((page) => page._meta.id)
   }
   return buildPageIds
+}
+
+const computeIncrementalHookBuildFlag = (hooks, file, context) => {
+  if (!hooks || hooks.length === 0) {
+    return false
+  }
+  // check if some of the hook have a incrementalRebuild attribute
+  // if they do call the function and return true if any of the function returns true
+  return hooks.some((hook) => {
+    if (typeof hook === "function") {
+      return true
+    }
+    if (typeof hook.incrementalRebuild === "function") {
+      return hook.incrementalRebuild(file, context)
+    }
+    return false
+  })
 }
 
 // load content derived from existing pages
@@ -685,7 +720,17 @@ const runConfigHooks = (config, event, data, buildFlags) => {
     if (typeof hook === "function") {
       data = runHandlerHook(hook, {}, config, data, buildFlags)
     } else {
-      const { action, handler, command, ...options } = hook
+      const { action, handler, command, incrementalRebuild, ...options } = hook
+      if (buildFlags.incremental && buildFlags.file) {
+        // during an incremental rebuild, only run hooks that have an incrementalRebuild that is
+        if (
+          !incrementalRebuild ||
+          (typeof incrementalRebuild === "function" &&
+            !incrementalRebuild(buildFlags.file, data))
+        ) {
+          return
+        }
+      }
       switch (action) {
         case "copy":
           runCopyHook(options, config)
