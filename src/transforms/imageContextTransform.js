@@ -253,14 +253,16 @@ const transformImageTag = async ($, img, page, context, options, config) => {
     global.logger.warn(`Page '${id}': image '${src}' has no 'alt' attribute.`)
   }
   if (isValidURL(src)) {
-    global.logger.log(`Page '${id}': image '${src}' is a URL. Skipping.`)
+    global.logger.log(
+      `- [transformImageTag] Page '${id}': image '${src}' is a URL. Skipping.`,
+    )
     return context
   }
   const imgPage = getPageFromSource(src, page, context.pages, config)
   if (imgPage._meta.outputType !== "IMAGE") {
     // image is handled by another loader. skipping.
     global.logger.log(
-      `Page '${id}': image '${src}' is handled by another loader. Skipping.`,
+      `- [transformImageTag] Page '${id}': image '${src}' is handled by another loader. Skipping.`,
     )
     return context
   }
@@ -304,7 +306,7 @@ const transformMetaTag = async (
   if (imgPage._meta.outputType !== "IMAGE") {
     // image is handled by another loader. skipping.
     global.logger.log(
-      `Page '${id}': image '${url.pathname}' is handled by another loader. Skipping.`,
+      `- [transformMetaTag] Page '${id}': image '${url.pathname}' is handled by another loader. Skipping.`,
     )
     return context
   }
