@@ -65,6 +65,7 @@ const watch = async (options = {}, config) => {
     // rebuild only the changed file
     fileWatcher.on("all", async (event, file) => {
       if (isBuildRunning) {
+        // there is already a build running, add to backlog
         changeBacklog.push({ event, file })
         return
       }
@@ -72,9 +73,9 @@ const watch = async (options = {}, config) => {
       lastBuild = await incrementalRebuild(options, lastBuild, event, file)
       while (changeBacklog.length > 0) {
         const change = changeBacklog.shift()
-        lastBuild = incrementalRebuild(
-          lastBuild,
+        lastBuild = await incrementalRebuild(
           options,
+          lastBuild,
           change.event,
           change.file,
         )
