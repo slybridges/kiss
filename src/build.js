@@ -722,7 +722,7 @@ const runConfigHooks = (config, event, data, buildFlags) => {
     } else {
       const { action, handler, command, incrementalRebuild, ...options } = hook
       if (buildFlags.incremental && buildFlags.file) {
-        // during an incremental rebuild, only run hooks that have an incrementalRebuild that is
+        // during an incremental rebuild, only run hooks that have an incrementalRebuild function set
         if (
           !incrementalRebuild ||
           (typeof incrementalRebuild === "function" &&
