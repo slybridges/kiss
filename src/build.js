@@ -226,6 +226,23 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     // full build
     return flags
   }
+  if (options.event === "addDir") {
+    // skip directory changes
+    return {
+      incremental: options.incremental,
+      config: false,
+      loadLibs: false,
+      preLoad: false,
+      content: false,
+      postLoad: false,
+      dynamicData: false,
+      dataViews: false,
+      transform: false,
+      write: false,
+      postWrite: false,
+      version: version,
+    }
+  }
   // only 'change' event is supported for now in incremental mode
   // 'add' and 'unlink' will trigger a full rebuild
   if (options.event !== "change") {
