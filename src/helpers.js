@@ -10,6 +10,23 @@ const AT_GENERIC_ATTRIBUTE_REGEX =
 const AT_FILE_ATTRIBUTE_REGEX =
   /@file:([^,\s\n\]'"<>)}#]+)(?=[,\s\n\]'"<>)}#]|$)/g
 
+const computePageId = (inputPath, config) => {
+  let topDir = config.dirs.content
+  if (config.dirs.content.endsWith("/")) {
+    topDir = topDir.slice(0, -1)
+  }
+  // replace top dir name by "."
+  return inputPath.replace(new RegExp("^" + topDir), ".")
+}
+
+const computeParentId = (inputPath, config) => {
+  const parentPath = path.dirname(inputPath)
+  if (parentPath === ".") {
+    return null
+  }
+  return computePageId(parentPath, config)
+}
+
 const findCollectionById = (collections, id) => {
   if (id === ".") {
     return collections
@@ -49,6 +66,15 @@ const getAbsoluteURL = (url = "", baseURL) => {
   }
   // valid path, make it absolute
   return new URL(url, baseURL).href
+}
+
+const getBuildEntries = (context, buildFlags) => {
+  const { pages } = context
+  const { buildPageIds } = buildFlags
+  if (buildPageIds?.length > 0) {
+    return buildPageIds.map((id) => [id, pages[id]])
+  }
+  return Object.entries(pages)
 }
 
 const getChildrenPages = (page, pages, filterOptions) => {
@@ -138,6 +164,15 @@ const getLocale = (context, sep = "-") => {
   return ""
 }
 
+const getPageFromInputPath = (inputPath, pages) => {
+  const pageValues = Object.values(pages)
+  let page = pageValues.find(
+    (p) =>
+      p._meta.inputPath === inputPath || p._meta.indexInputPath === inputPath,
+  )
+  return page
+}
+
 // Tries to find the page corresponding to the source
 // @attributes should have been resolved by mow
 // Supports absolute, and relative paths
@@ -149,7 +184,13 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   const permalink = getFullPath(source, parentPage.permalink, {
     throwIfInvalid: true,
   })
-  const page = Object.values(pages).find((p) => p.permalink === permalink)
+  const page = Object.values(pages).find(
+    (p) =>
+      p.permalink === permalink ||
+      // in incremental builds,
+      // also search in derivatives in case the image source was already replaced during previous build
+      p.derivatives?.find((d) => d.permalink === permalink),
+  )
   if (!page) {
     if (throwIfNotFound) {
       throw new Error(
@@ -161,29 +202,17 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   return { ...page }
 }
 
-const getPageId = (inputPath, config) => {
-  let topDir = config.dirs.content
-  if (config.dirs.content.endsWith("/")) {
-    topDir = topDir.slice(0, -1)
-  }
-  // replace top dir name by "."
-  return inputPath.replace(new RegExp("^" + topDir), ".")
-}
-
-const getParentId = (inputPath, config) => {
-  const parentPath = path.dirname(inputPath)
-  if (parentPath === ".") {
-    return null
-  }
-  return getPageId(parentPath, config)
-}
-
 // returns the parent sanitizing the data for the cascade
-const getParentPage = (pages, id) => {
+const getParentPage = (pages, id, isPostAsking) => {
   let parent = pages[id]
   if (!parent) {
     global.logger.error(`Couldn't find parent with id '${id}'`)
-    console.log(Object.keys(pages))
+    return null
+  }
+  if (!isPostAsking) {
+    // omit attributes that shouldn't cascade, unless the page asking is a post
+    const attributesToOmit = ["_meta.indexInputPath", "_meta.indexLoaderId"]
+    parent = _.omit(parent, attributesToOmit)
   }
   return omitNoCascadeAttributes(parent)
 }
@@ -310,16 +339,18 @@ const sortPages = (pages, sortBy, { skipUndefinedSort } = {}) => {
 module.exports = {
   AT_FILE_ATTRIBUTE_REGEX,
   AT_GENERIC_ATTRIBUTE_REGEX,
+  computePageId,
+  computeParentId,
   findCollectionById,
   getAbsoluteURL,
+  getBuildEntries,
   getChildrenPages,
   getDescendantPages,
   getFullPath,
   getInputPath,
   getLocale,
+  getPageFromInputPath,
   getPageFromSource,
-  getPageId,
-  getParentId,
   getParentPage,
   isChild,
   isValidURL,
@@ -333,11 +364,11 @@ module.exports = {
 
 // removing any key ending with _no_cascade
 const omitNoCascadeAttributes = (obj) => {
-  let result = {}
+  let result = _.isArray(obj) ? [] : {}
   _.forEach(obj, (value, key) => {
-    if (_.isPlainObject(value)) {
+    if (_.isPlainObject(value) || _.isArray(value)) {
       result[key] = omitNoCascadeAttributes(value)
-    } else if (!key.endsWith("_no_cascade")) {
+    } else if (typeof key === "number" || !key.endsWith("_no_cascade")) {
       result[key] = value
     }
   })

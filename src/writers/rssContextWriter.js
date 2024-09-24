@@ -57,7 +57,7 @@ const pageObject = (page, options, config) => {
       publishedDate = formatRFC3339(publishedDate)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format published date '${publishedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
+        `[rssContextWriter]: cannot format published date '${publishedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
       )
       publishedDate = null
     }
@@ -68,7 +68,7 @@ const pageObject = (page, options, config) => {
       updatedDate = formatRFC3339(updatedDate)
     } catch (err) {
       global.logger.warn(
-        `[${this.name}]: cannot format updated date '${updatedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
+        `[rssContextWriter]: cannot format updated date '${updatedDate}' to RFC3339 for page '${page.permalink}': ${err}.`,
       )
       updatedDate = null
     }
