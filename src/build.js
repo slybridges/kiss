@@ -30,6 +30,15 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
     config = loadConfig({ configFile })
   }
 
+  // config file can either be passed as option or be the default in the last build config
+  const actualConfigFile = configFile || config?.configFile
+  if (options.incremental && options.file === actualConfigFile) {
+    global.logger.section("Reloading config and initial context")
+    config = loadConfig({ configFile })
+    // clearing last build contect in case of config change
+    lastBuild.context = null
+  }
+
   const buildFlags = computeBuildFlags(
     options,
     config,
@@ -226,6 +235,7 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     // full build
     return flags
   }
+  // incremental build mode
   if (options.event === "addDir") {
     // skip directory changes
     return {
@@ -244,13 +254,12 @@ const computeBuildFlags = (options, config, lastContext, version) => {
     }
   }
   // only 'change' event is supported for now in incremental mode
-  // 'add' and 'unlink' will trigger a full rebuild
+  // 'add', 'unlink' and 'unlinkDir' will trigger a full rebuild
   if (options.event !== "change") {
     return flags
   }
-  // incremental build
   flags.file = options.file
-  flags.config = false // FIXME: full rebuild on config file changes
+  flags.config = false
   flags.content = false
   flags.dynamicData = false
   flags.dataViews = false
