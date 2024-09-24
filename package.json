@@ -12,9 +12,9 @@
   "author": "Sylvestre Dupont",
   "license": "MIT",
   "dependencies": {
-    "browser-sync": "^3.0.2",
+    "browser-sync": "^3.0.3",
     "chalk": "^4.1.2",
-    "cheerio": "^1.0.0-rc.12",
+    "cheerio": "^1.0.0",
     "chokidar": "^3.6.0",
     "date-fns": "^3.6.0",
     "fast-glob": "^3.3.2",
@@ -23,17 +23,17 @@
     "lodash": "^4.17.21",
     "marked": "^12.0.1",
     "nunjucks": "^3.2.4",
-    "sharp": "^0.33.3",
+    "sharp": "^0.33.5",
     "slugify": "^1.6.6",
     "xml": "^1.0.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.5.0",
-    "eslint": "^9.5.0",
+    "@eslint/js": "^9.11.1",
+    "eslint": "^9.11.1",
     "eslint-config-prettier": "^9.1.0",
-    "globals": "^15.6.0",
-    "prettier": "^3.2.5"
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3"
   },
   "repository": {
     "type": "git",
