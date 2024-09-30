@@ -55,10 +55,13 @@ const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
   // there can be several input sources for a page,
   // e.g. index.js, index.md, post.md
   page._meta.inputSources = pages[id]?._meta.inputSources || []
-  page._meta.inputSources.push({
-    path: inputPath,
-    loaderId: file?.loaderId,
-  })
+  // add the current input source if not already in the array
+  if (!page._meta.inputSources.find((source) => source.path === inputPath)) {
+    page._meta.inputSources.push({
+      path: inputPath,
+      loaderId: file?.loaderId,
+    })
+  }
   if (file) {
     page._meta.fileCreated = file.stats.ctime
     page._meta.fileModified = file.stats.mtime
