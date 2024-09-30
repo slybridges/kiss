@@ -302,7 +302,8 @@ const computeBuildFlags = (options, config, lastContext, version) => {
 }
 
 // return the list of ids impacted by a file change which are
-// the file itself, its ascendants and descendants in case of a content file change
+// the file itself, its ascendants and potentially the descendants
+// in case of a content file change
 // or all pages using a template in case of a template file change
 // if there is no file change, return an empty list
 const computeBuildPageIDs = (context, buildFlags) => {
@@ -319,8 +320,12 @@ const computeBuildPageIDs = (context, buildFlags) => {
     buildPageIds = buildPageIds.concat(page._meta.ascendants)
     // current page
     buildPageIds.push(page._meta.id)
-    // descendants
-    buildPageIds = buildPageIds.concat(page._meta.descendants)
+    // to check if we need to reload the descendants, we parse the contentFile path,
+    const contentFilePathObject = path.parse(buildFlags.contentFile)
+    // if the file is a post.* file no need to reload the descendants
+    if (!contentFilePathObject.name === "post") {
+      buildPageIds = buildPageIds.concat(page._meta.descendants)
+    }
   } else if (buildFlags.templateFile) {
     // mark all pages using that template for rebuild
     // Note: if the template is a sub-template of another template
