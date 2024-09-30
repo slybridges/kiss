@@ -631,21 +631,17 @@ const loadContent = async (config, context, buildFlags) => {
         )
         return
       }
-      // add to files to load
-      if (page._meta.indexInputPath) {
-        // also need to reload the index file
-        files = files.concat(
-          getFiles(
-            page._meta.indexLoaderId,
-            config,
-            page._meta.indexInputPath,
-            true,
-          ),
-        )
-      }
-      files = files.concat(
-        getFiles(page._meta.loaderId, config, page._meta.inputPath, true),
-      )
+      // iterate the _meta.inputSources array to get all files
+      // that were used to build this page
+      page._meta.inputSources.forEach((inputSource) => {
+        const { loaderId, path } = inputSource
+        if (loaderId === undefined) {
+          // no loader, it's probably a virtual entry created by a folder
+          // lets skip it
+          return
+        }
+        files = files.concat(getFiles(loaderId, config, path, true))
+      })
     })
 
     global.logger.info(`Reloading ${files.length} files...`)

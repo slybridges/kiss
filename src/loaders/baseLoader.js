@@ -52,16 +52,16 @@ const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
     outputType,
     collectionGroup,
   })
-  if (inputPathObject.name === "index") {
-    // save the input path in indexInputPath in case it gets overwritten later on by a post.* file
-    page._meta.indexInputPath = inputPath
-    // also need to save the loader index
-    page._meta.indexLoaderId = file?.loaderId
-  }
+  // there can be several input sources for a page,
+  // e.g. index.js, index.md, post.md
+  page._meta.inputSources = pages[id]?._meta.inputSources || []
+  page._meta.inputSources.push({
+    path: inputPath,
+    loaderId: file?.loaderId,
+  })
   if (file) {
     page._meta.fileCreated = file.stats.ctime
     page._meta.fileModified = file.stats.mtime
-    page._meta.loaderId = file.loaderId
   }
   if (buildVersion !== undefined) {
     page._meta.buildVersion = buildVersion

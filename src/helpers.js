@@ -166,9 +166,8 @@ const getLocale = (context, sep = "-") => {
 
 const getPageFromInputPath = (inputPath, pages) => {
   const pageValues = Object.values(pages)
-  let page = pageValues.find(
-    (p) =>
-      p._meta.inputPath === inputPath || p._meta.indexInputPath === inputPath,
+  let page = pageValues.find((p) =>
+    p._meta.inputSources.map((s) => s.path).includes(inputPath),
   )
   return page
 }
@@ -211,7 +210,7 @@ const getParentPage = (pages, id, isPostAsking) => {
   }
   if (!isPostAsking) {
     // omit attributes that shouldn't cascade, unless the page asking is a post
-    const attributesToOmit = ["_meta.indexInputPath", "_meta.indexLoaderId"]
+    const attributesToOmit = ["_meta.inputSources"]
     parent = _.omit(parent, attributesToOmit)
   }
   return omitNoCascadeAttributes(parent)
