@@ -323,7 +323,7 @@ const computeBuildPageIDs = (context, buildFlags) => {
     // to check if we need to reload the descendants, we parse the contentFile path,
     const contentFilePathObject = path.parse(buildFlags.contentFile)
     // if the file is a post.* file no need to reload the descendants
-    if (!contentFilePathObject.name === "post") {
+    if (contentFilePathObject.name !== "post") {
       buildPageIds = buildPageIds.concat(page._meta.descendants)
     }
   } else if (buildFlags.templateFile) {
@@ -563,9 +563,11 @@ const directoryCollectionLoader = (
     config,
   )
 
-  return _.merge({}, pages, {
-    [parentId]: parent,
-  })
+  // deep create a new instance of the pages object
+  pages = _.merge({}, pages)
+  pages[parentId] = parent
+
+  return pages
 }
 
 const isComputableValue = (value) =>

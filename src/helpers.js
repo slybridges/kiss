@@ -11,6 +11,12 @@ const AT_FILE_ATTRIBUTE_REGEX =
   /@file:([^,\s\n\]'"<>)}#]+)(?=[,\s\n\]'"<>)}#]|$)/g
 
 const computePageId = (inputPath, config) => {
+  const imputPathObject = path.parse(inputPath)
+  // if the name is post or index, remove the basename
+  if (["post", "index"].includes(imputPathObject.name)) {
+    return computePageId(path.dirname(inputPath), config)
+  }
+  // remove the content dir from the input path
   let topDir = config.dirs.content
   if (config.dirs.content.endsWith("/")) {
     topDir = topDir.slice(0, -1)
