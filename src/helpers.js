@@ -74,13 +74,27 @@ const getAbsoluteURL = (url = "", baseURL) => {
   return new URL(url, baseURL).href
 }
 
-const getBuildEntries = (context, buildFlags) => {
+const getBuildEntries = (context, buildFlags, options = {}) => {
   const { pages } = context
-  const { buildPageIds } = buildFlags
-  if (buildPageIds?.length > 0) {
-    return buildPageIds.map((id) => [id, pages[id]])
+  const { includingImages } = options
+  // using a Set to avoid duplicates
+  const ids = new Set(
+    buildFlags.buildPageIds.length > 0
+      ? buildFlags.buildPageIds
+      : Object.keys(pages),
+  )
+
+  if (includingImages) {
+    // Search for images that are used by the pages to be built
+    Object.values(pages)
+      .filter(
+        (page) =>
+          page._meta.outputType === "IMAGE" &&
+          page.sources?.some((source) => ids.has(source)),
+      )
+      .forEach((page) => ids.add(page._meta.id))
   }
-  return Object.entries(pages)
+  return [...ids].map((id) => [id, pages[id]])
 }
 
 const getChildrenPages = (page, pages, filterOptions) => {

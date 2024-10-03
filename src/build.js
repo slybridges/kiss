@@ -6,6 +6,7 @@ const path = require("path")
 
 const { loadConfig } = require("./config")
 const {
+  computePageId,
   computeParentId,
   getBuildEntries,
   getPageFromInputPath,
@@ -35,7 +36,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
   if (options.incremental && options.file === actualConfigFile) {
     global.logger.section("Reloading config and initial context")
     config = loadConfig({ configFile })
-    // clearing last build contect in case of config change
+    // clearing last build context in case of config change
     lastBuild.context = null
   }
 
@@ -50,7 +51,7 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
 
   if (options.incremental) {
     // compute the file ids that will need to be updated
-    buildFlags.buildPageIds = computeBuildPageIDs(context, buildFlags)
+    buildFlags.buildPageIds = computeBuildPageIDs(config, context, buildFlags)
     if (buildFlags.buildPageIds.length > 0) {
       global.logger.info(
         "Change impacts pages with IDs",
@@ -218,6 +219,7 @@ const applyTransforms = async (context, config, buildFlags) => {
 
 const computeBuildFlags = (options, config, lastContext, version) => {
   let flags = {
+    event: options.event,
     incremental: options.incremental,
     config: true,
     loadLibs: config.hooks.loadLibs.length > 0,
@@ -253,9 +255,9 @@ const computeBuildFlags = (options, config, lastContext, version) => {
       version: version,
     }
   }
-  // only 'change' event is supported for now in incremental mode
-  // 'add', 'unlink' and 'unlinkDir' will trigger a full rebuild
-  if (options.event !== "change") {
+  // only 'change' and 'add' event is supported for now in incremental mode
+  // 'unlink' and 'unlinkDir' will trigger a full rebuild
+  if (!["add", "change"].includes(options.event)) {
     return flags
   }
   flags.file = options.file
@@ -306,15 +308,41 @@ const computeBuildFlags = (options, config, lastContext, version) => {
 // in case of a content file change
 // or all pages using a template in case of a template file change
 // if there is no file change, return an empty list
-const computeBuildPageIDs = (context, buildFlags) => {
+const computeBuildPageIDs = (config, context, buildFlags) => {
   let buildPageIds = []
+  let isParentPage = false
   if (buildFlags.contentFile) {
-    const page = getPageFromInputPath(buildFlags.contentFile, context.pages)
+    let page = getPageFromInputPath(buildFlags.contentFile, context.pages)
     if (!page) {
-      global.logger.warn(
-        `Could not find existing page for '${buildFlags.contentFile}'.`,
-      )
-      return []
+      if (buildFlags.event === "add") {
+        // check that we can file a matching loader for the current file
+        const loaderId = findMatchingLoaderId(config, buildFlags.contentFile)
+        if (loaderId === undefined) {
+          global.logger.warn(
+            `Could not find loader for new file '${buildFlags.contentFile}'.`,
+          )
+          return []
+        }
+        // new file, we need to compute its id and parent Id
+        const pageId = computePageId(buildFlags.contentFile, config)
+        const parentId = computeParentId(buildFlags.contentFile, config)
+        if (!parentId) {
+          // the parent id is not found, let's bail
+          global.logger.warn(
+            `Could not find parent page for new file '${buildFlags.contentFile}'.`,
+          )
+          return []
+        }
+        buildPageIds = [pageId]
+        // make the parent the default page
+        page = context.pages[parentId]
+        isParentPage = true
+      } else {
+        global.logger.warn(
+          `Could not find existing page for '${buildFlags.contentFile}'.`,
+        )
+        return []
+      }
     }
     // ascendants
     buildPageIds = buildPageIds.concat(page._meta.ascendants)
@@ -322,8 +350,9 @@ const computeBuildPageIDs = (context, buildFlags) => {
     buildPageIds.push(page._meta.id)
     // to check if we need to reload the descendants, we parse the contentFile path,
     const contentFilePathObject = path.parse(buildFlags.contentFile)
-    // if the file is a post.* file no need to reload the descendants
-    if (contentFilePathObject.name !== "post") {
+    // if the file is a post.* file or the parent page of the base page
+    // no need to reload the descendants
+    if (contentFilePathObject.name !== "post" && !isParentPage) {
       buildPageIds = buildPageIds.concat(page._meta.descendants)
     }
   } else if (buildFlags.templateFile) {
@@ -574,6 +603,19 @@ const isComputableValue = (value) =>
   typeof value === "function" ||
   (_.isPlainObject(value) && value._kissCheckDependencies)
 
+const findMatchingLoaderId = (config, file) => {
+  for (let [idx, loader] of config.loaders.entries()) {
+    const { namespace, ...loaderOptions } = loader
+    const options = getOptions(config, namespace, loaderOptions)
+    const { match } = options
+    if (match && fg.sync(match).includes(file)) {
+      return idx
+    }
+  }
+  global.logger.warn(`No matching loader found for file '${file}'`)
+  return undefined
+}
+
 const getFiles = (
   loaderId,
   config,
@@ -633,9 +675,27 @@ const loadContent = async (config, context, buildFlags) => {
     buildPageIds.forEach((id) => {
       const page = pages[id]
       if (!page) {
-        global.logger.warn(
-          `[loadContent] Page with id '${id}' not found. Skipping.`,
-        )
+        if (
+          buildFlags.event === "add" &&
+          buildFlags.contentFile &&
+          id === computePageId(buildFlags.contentFile, config)
+        ) {
+          // new file, we need to find the loader for it
+          const loaderId = findMatchingLoaderId(config, buildFlags.contentFile)
+          if (loaderId === undefined) {
+            global.logger.warn(
+              `[loadContent] Could not find loader for new file '${buildFlags.contentFile}'. Skipping.`,
+            )
+            return
+          }
+          files = files.concat(
+            getFiles(loaderId, config, buildFlags.contentFile, true),
+          )
+        } else {
+          global.logger.warn(
+            `[loadContent] Page with id '${id}' not found. Skipping.`,
+          )
+        }
         return
       }
       // iterate the _meta.inputSources array to get all files
@@ -853,7 +913,14 @@ const runHandlerHook = (handler, options, config, data, buildFlags) => {
 }
 
 const writeStaticSite = async (context, config, buildFlags) => {
-  const entries = getBuildEntries(context, buildFlags)
+  const isIncrementalBuild = buildFlags.incremental && buildFlags.buildPageIds
+  const entries = getBuildEntries(context, buildFlags, {
+    // In incremental mode, we also need to write images linked to articles that changed.
+    // This is because when you add an image, their derivatives will only be added
+    // once the image is used in a post and so this is when you need to write them.
+    // We don't overwrite images in incremental mode, so the penalty for doing so is low.
+    includingImages: isIncrementalBuild,
+  })
   let message = `Writing ${entries.length} pages and images`
   global.logger.info(message)
   await Promise.all(
