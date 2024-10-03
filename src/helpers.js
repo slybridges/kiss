@@ -94,7 +94,7 @@ const getBuildEntries = (context, buildFlags, options = {}) => {
       )
       .forEach((page) => ids.add(page._meta.id))
   }
-  return [...ids].map((id) => [id, pages[id]])
+  return [...ids].map((id) => [id, pages[id]]).filter(([, page]) => !!page) // remove undefined pages (can happen during build errors)
 }
 
 const getChildrenPages = (page, pages, filterOptions) => {
