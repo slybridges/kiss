@@ -79,7 +79,7 @@ const getBuildEntries = (context, buildFlags, options = {}) => {
   const { includingImages } = options
   // using a Set to avoid duplicates
   const ids = new Set(
-    buildFlags.buildPageIds.length > 0
+    buildFlags?.buildPageIds && buildFlags.buildPageIds.length > 0
       ? buildFlags.buildPageIds
       : Object.keys(pages),
   )
