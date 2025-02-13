@@ -195,12 +195,14 @@ const defaultConfig = {
   },
   rss: {
     active: true,
-    target: "feed.xml",
+    limit: null, // number of entries to include. null = all entries
     pageFilter: (page) =>
       page.url &&
       page._meta.isPost &&
       !page.excludeFromWrite &&
       !page.excludeFromSitemap,
+    sortCollectionBy: null, // defaults to config.defaults.sortCollectionBy
+    target: "feed.xml",
     xmlOptions: {
       declaration: true,
       indent: env === "production" ? null : "  ",

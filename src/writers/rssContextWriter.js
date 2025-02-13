@@ -190,12 +190,16 @@ const rssContextWriter = async (context, options, config) => {
     feedObject.push({ category: context.site.category })
   }
   // page entries
-  const pageObjects = _.map(
-    sortPages(
-      _.filter(context.pages, options.pageFilter),
-      config.defaults.sortCollectionBy,
-    ),
-    (page) => pageObject(page, options, config),
+  const sortBy = options.sortCollectionBy || config.defaults.sortCollectionBy
+  let sortedPages = sortPages(
+    _.filter(context.pages, options.pageFilter),
+    sortBy,
+  )
+  if (options.limit) {
+    sortedPages = sortedPages.slice(0, options.limit)
+  }
+  const pageObjects = sortedPages.map((page) =>
+    pageObject(page, options, config),
   )
   feedObject = feedObject.concat(pageObjects)
   const feedXML = xml({ feed: feedObject }, options.xmlOptions)
