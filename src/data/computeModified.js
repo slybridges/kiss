@@ -19,6 +19,10 @@ const computeModified = ({ _meta }, config, { pages }) => {
   }
 }
 
-computeModified.kissDependencies = [["_meta.descendants", "modified"]]
+computeModified.kissDependencies = [
+  "_meta.isCollection",
+  "_meta.descendants",
+  ["_meta.descendants", "modified"],
+]
 
 module.exports = computeModified
