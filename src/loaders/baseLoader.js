@@ -11,6 +11,8 @@ const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
   if (basename === config.dirs.content) {
     basename = ""
   }
+  // FIXME: the parent data we want here is the one coming from index.* files
+  // and not any that was overwritten by post.* files
   const parentData = parentId
     ? getParentPage(pages, parentId, inputPathObject.name === "post")
     : {}

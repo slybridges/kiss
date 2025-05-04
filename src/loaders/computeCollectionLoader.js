@@ -58,7 +58,12 @@ const computeCollectionLoader = (pages, options, config) => {
   let topLevelPage = baseLoader(
     inputPath,
     { source: "computed", collectionGroup: options.name },
-    { _meta: { baseTitle: options.name } },
+    {
+      // FIXME: remove once we are able to tell the baseloader
+      // to only load data form index.* files and not post.* files
+      layout: options.template || config.templates.collection,
+      _meta: { baseTitle: options.name },
+    },
     pages,
     config,
   )
