@@ -3,12 +3,12 @@ const fs = require("fs")
 const path = require("path")
 
 // @ attribute format: @<attribute>:<value><terminator>
-// terminators: space, comma, newline, end of string, ', ",<, >, ), ], }, #
+// terminators: space, comma, newline, end of string, ', ",<, >, ), ], }, #, \
 const AT_GENERIC_ATTRIBUTE_REGEX =
-  /@([a-zA-Z0-9-_]+):([^,\s\n\]'"<>)}#]+)(?=[,\s\n\]'"<>)}#]|$)/g
+  /@([\w-]+):([^,\s\]'"<>\\)}#]+)(?=[,\s\]'"<>\\)}#]|$)/g
 
 const AT_FILE_ATTRIBUTE_REGEX =
-  /@file:([^,\s\n\]'"<>)}#]+)(?=[,\s\n\]'"<>)}#]|$)/g
+  /@file:([^,\s\]'"<>\\)}#]+)(?=[,\s\]'"<>\\)}#]|$)/g
 
 const computePageId = (inputPath, config) => {
   const imputPathObject = path.parse(inputPath)
