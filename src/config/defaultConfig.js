@@ -75,6 +75,9 @@ const defaultConfig = {
     // https://moz.com/learn/seo/meta-description
     // This settings only applies to description automatically generated. If you provide your own description, it will be used as is.
     descriptionLength: 160,
+    // PERFORMANCE OPTIMIZATION: Enable centralized page indexes for O(1) lookups during transforms
+    // Set to false only for extremely memory-constrained environments
+    enablePageIndexes: true,
     maxComputingRounds: 10,
     pageData: initialPageData,
     pagePublishedAttribute: "created",

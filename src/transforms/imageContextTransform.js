@@ -14,48 +14,282 @@ const META_SELECTORS = [
 const imageContextTransform = async (context, options, config, buildFlags) => {
   const entries = getBuildEntries(context, buildFlags)
 
+  // Three-phase approach to optimiza perfs while minimizing memory usage
+
+  // Track unique images without storing heavy objects
+  const uniqueImageIds = new Set()
+  const imageReferences = []
+
+  // Cache lookups to avoid repeated O(n) searches
+  // Maps pageId:src to imgId (or null for not found)
+  // This prevents redundant getPageFromSource calls for repeated images
+  const seenSources = new Map()
+
+  // Phase 1: Discovery - collect image IDs and references only
+  // We don't process images yet, just identify what needs processing
   for (let [id, page] of entries) {
     if (!page._html || !page.permalink) {
       continue
     }
+
     const $ = cheerio.load(page._html)
-    // images in <img> tag
-    let imagesPromises = $("img").map(async (i, img) => {
-      try {
-        context = await transformImageTag(
-          $,
-          img,
-          page,
-          context,
-          options,
-          config,
+
+    // Process images found
+    $("img").each((i, img) => {
+      const src = $(img).attr("src") || ""
+      const decodedSrc = decodeURI(src)
+
+      if (!src || isValidURL(decodedSrc)) {
+        global.logger.log(
+          `- [imageContextTransform] Page '${id}': image '${decodedSrc}' is a URL. Skipping.`,
         )
-      } catch (err) {
-        global.logger.error(
-          `Page '${id}', error transforming image: ${err.message}`,
+        return
+      }
+
+      if (!img.attribs.alt) {
+        global.logger.warn(
+          `Page '${id}': image '${decodedSrc}' has no 'alt' attribute.`,
         )
       }
+
+      // Check if we've already processed this src for this page
+      const sourceKey = `${id}:${src}`
+      if (seenSources.has(sourceKey)) {
+        const cachedImgId = seenSources.get(sourceKey)
+        if (cachedImgId) {
+          imageReferences.push({
+            type: "img",
+            pageId: id,
+            imgId: cachedImgId,
+            index: i,
+          })
+        }
+        return
+      }
+
+      // else image not in cache, save
+
+      if (!img.attribs.alt) {
+        global.logger.warn(
+          `Page '${id}': image '${src}' has no 'alt' attribute.`,
+        )
+      }
+      const imgPage = getPageFromSource(
+        decodedSrc,
+        page,
+        context.pages,
+        config,
+        { indexes: context._pageIndexes },
+      )
+
+      if (!imgPage?._meta?.id) {
+        seenSources.set(sourceKey, null) // Cache negative result
+        return
+      }
+
+      if (imgPage._meta.outputType !== "IMAGE") {
+        // image is handled by another loader. skipping.
+        global.logger.log(
+          `- [imageContextTransform] Page '${id}': image '${decodedSrc}' is handled by another loader. Skipping.`,
+        )
+        seenSources.set(sourceKey, null) // Cache negative result
+        return
+      }
+
+      const imgId = imgPage._meta.id
+      seenSources.set(sourceKey, imgId) // Cache positive result
+      uniqueImageIds.add(imgId)
+      imageReferences.push({
+        type: "img",
+        pageId: id,
+        imgId: imgId,
+        index: i,
+      })
     })
 
-    // <meta> selectors
-    let metaPromises = META_SELECTORS.map(async (selector) => {
-      try {
-        context = await transformMetaTag(
-          $,
-          selector,
-          page,
-          context,
-          options,
-          config,
-        )
-      } catch (err) {
-        global.logger.error(
-          `Page '${id}', error transforming image in meta: ${err.message}`,
-        )
+    // Process meta tags
+    META_SELECTORS.forEach((selector, selectorIndex) => {
+      const content = $(selector).attr("content")
+      if (!content) {
+        // No tag or empty content. Skipping.
+        return
       }
+
+      if (!isValidURL(content)) {
+        global.logger.warn(
+          `Page '${id}' in meta '${selector}': image URL '${content}' is not a valid URL.`,
+        )
+        seenSources.set(sourceKey, null) // Cache negative result
+        return
+      }
+
+      // Check if we've already processed this URL for this page
+      const sourceKey = `${id}:meta:${content}`
+      if (seenSources.has(sourceKey)) {
+        const cachedImgId = seenSources.get(sourceKey)
+        if (cachedImgId) {
+          imageReferences.push({
+            type: "meta",
+            pageId: id,
+            imgId: cachedImgId,
+            selectorIndex,
+          })
+        }
+        return
+      }
+
+      // else image not in cache, save it
+      const url = new URL(content)
+      const imgPage = getPageFromSource(
+        url.pathname,
+        page,
+        context.pages,
+        config,
+        { indexes: context._pageIndexes },
+      )
+
+      if (!imgPage) {
+        seenSources.set(sourceKey, null) // Cache negative result
+        return
+      }
+
+      if (imgPage._meta.outputType !== "IMAGE") {
+        // image is handled by another loader. skipping.
+        global.logger.log(
+          `- [imageContextTransform] Page '${id}': image '${url.pathname}' is handled by another loader. Skipping.`,
+        )
+        seenSources.set(sourceKey, null) // Cache negative result
+        return
+      }
+
+      const imgId = imgPage._meta.id
+      seenSources.set(sourceKey, imgId) // Cache positive result
+      uniqueImageIds.add(imgId)
+      imageReferences.push({
+        type: "meta",
+        pageId: id,
+        imgId: imgId,
+        selectorIndex,
+      })
     })
-    await Promise.all([...imagesPromises, ...metaPromises])
+
+    // Clear the DOM immediately to free memory
+    $.root().empty()
   }
+
+  // Phase 2: Process unique images in small batches
+  // Process only a few images at a time to avoid heap exhaustion
+  // Sharp image processing is memory-intensive, especially for large images
+  const BATCH_SIZE = 20
+  const imageIds = Array.from(uniqueImageIds)
+
+  for (let i = 0; i < imageIds.length; i += BATCH_SIZE) {
+    const batch = imageIds.slice(i, i + BATCH_SIZE)
+
+    // Process inage batch in parallel
+    await Promise.all(
+      batch.map(async (imgId) => {
+        const imgPage = context.pages[imgId]
+        if (!imgPage || imgPage.formats) {
+          return // Already processed
+        }
+
+        try {
+          const imageDetails = await getImageDetails(imgPage, options, config)
+          // Update context immediately
+          context.pages[imgId] = imageDetails
+        } catch (err) {
+          global.logger.error(`Error processing image ${imgId}: ${err.message}`)
+        }
+      }),
+    )
+  }
+
+  // Phase 3: Update pages - process one at a time to minimize memory usage
+
+  // Group references by page
+  const pageGroups = {}
+  for (const ref of imageReferences) {
+    if (!pageGroups[ref.pageId]) {
+      pageGroups[ref.pageId] = []
+    }
+    pageGroups[ref.pageId].push(ref)
+  }
+
+  // Process pages one at a time to control memory
+  for (const [pageId, refs] of Object.entries(pageGroups)) {
+    const page = context.pages[pageId]
+    if (!page || !page._html) continue
+
+    const $ = cheerio.load(page._html)
+
+    let modified = false
+
+    // Group refs by type for efficient processing
+    const imgRefs = refs.filter((r) => r.type === "img")
+    const metaRefs = refs.filter((r) => r.type === "meta")
+
+    // Update img tags
+    if (imgRefs.length > 0) {
+      const imgElements = $("img").toArray()
+      for (const ref of imgRefs) {
+        const img = imgElements[ref.index]
+
+        if (!img) {
+          continue
+        }
+
+        const imageDetails = context.pages[ref.imgId]
+        if (!imageDetails || imageDetails._meta.is404) {
+          // Image not found or invalid, skip
+          continue
+        }
+
+        // Update sources tracking
+        if (!imageDetails.sources) {
+          imageDetails.sources = []
+        }
+        if (imageDetails.sources.indexOf(pageId) === -1) {
+          imageDetails.sources.push(pageId)
+        }
+
+        const newElement = getImageTag($(img).clone(), imageDetails, options)
+        $(img).replaceWith(newElement)
+        modified = true
+      }
+    }
+
+    // Update meta tags
+    if (metaRefs.length > 0) {
+      for (const ref of metaRefs) {
+        const selector = META_SELECTORS[ref.selectorIndex]
+        const imageDetails = context.pages[ref.imgId]
+        if (!imageDetails || imageDetails._meta.is404) continue
+
+        // Update sources tracking
+        if (!imageDetails.sources) imageDetails.sources = []
+        if (imageDetails.sources.indexOf(pageId) === -1) {
+          imageDetails.sources.push(pageId)
+        }
+
+        const content = $(selector).attr("content")
+        if (content) {
+          const derivative = getDefaultDerivative(imageDetails)
+          const url = new URL(content)
+          $(selector).attr("content", new URL(derivative.permalink, url.origin))
+          modified = true
+        }
+      }
+    }
+
+    if (modified) {
+      context.pages[pageId]._html = $.html()
+    }
+
+    // Clear the DOM to free memory
+    $.root().empty()
+  }
+
   return context
 }
 
@@ -84,7 +318,7 @@ const getDefaultDerivative = (page) => {
       `[getDefaultDerivative] page '${page._meta.id}' does not have a 'defaultWidth'.`,
     )
   }
-  if (!derivatives.length === 0) {
+  if (!derivatives || derivatives.length === 0) {
     throw new Error(
       `[getDefaultDerivative] page '${page._meta.id}' does not have any derivative.`,
     )
@@ -144,35 +378,31 @@ const getDerivatives = (imgPage, options, config) => {
   return derivatives
 }
 
-const getImageDetails = async (imgPage, sourceId, context, options, config) => {
-  const inputPath = imgPage._meta.inputPath
+/**
+ * Gather all details for an image page, including derivatives and metadata asynchronously.
+ */
+const getImageDetails = async (imgPage, options, config) => {
   const permalink = imgPage.permalink
-  if (!imgPage.formats) {
-    // first time the image transformer is called
-    global.logger.log(
-      `- [imageContextTransform] new image found: '${inputPath}'`,
-    )
-    imgPage = {
-      ...imgPage,
-      blur: options.blur,
-      defaultWidth: options.defaultWidth || options.widths[0],
-      defaultFormat: options.defaultFormat || options.formats[0],
-      derivatives: [],
-      formats: options.formats,
-      permalink,
-      permalinkDir: path.dirname(permalink),
-      sizes: options.sizes || [],
-      sources: [],
-      _meta: await getImageMetadata(imgPage._meta, permalink, options, config),
-    }
-    if (!imgPage._meta.is404) {
-      imgPage.derivatives = getDerivatives(imgPage, options, config)
-    }
+
+  const imageDetails = {
+    ...imgPage,
+    blur: options.blur,
+    defaultWidth: options.defaultWidth || options.widths[0],
+    defaultFormat: options.defaultFormat || options.formats[0],
+    derivatives: [],
+    formats: options.formats,
+    permalink,
+    permalinkDir: path.dirname(permalink),
+    sizes: options.sizes || [],
+    sources: [],
+    _meta: await getImageMetadata(imgPage._meta, permalink, options),
   }
-  if (imgPage.sources.indexOf(sourceId) === -1) {
-    imgPage.sources.push(sourceId)
+
+  if (!imageDetails._meta.is404) {
+    imageDetails.derivatives = getDerivatives(imageDetails, options, config)
   }
-  return imgPage
+
+  return imageDetails
 }
 
 const getImageTag = (imgNode, page, options) => {
@@ -226,8 +456,7 @@ const getImageMetadata = async (meta, permalink, options) => {
     }
   } catch (err) {
     global.logger.error(
-      `[getImageMetadata] Error getting image metadata for ${meta.inputPath}\n`,
-      err.stack,
+      `[getImageMetadata] Error getting image metadata for ${meta.inputPath}: ${err.message}`,
     )
     meta.is404 = true
   }
@@ -247,84 +476,3 @@ const getSrcset = (derivatives, format) =>
       return width ? url + " " + width + "w" : url
     })
     .join(", ")
-
-const transformImageTag = async ($, img, page, context, options, config) => {
-  const id = page._meta.id
-  let src = decodeURI($(img).attr("src"))
-  if (!img.attribs.alt) {
-    global.logger.warn(`Page '${id}': image '${src}' has no 'alt' attribute.`)
-  }
-  if (isValidURL(src)) {
-    global.logger.log(
-      `- [transformImageTag] Page '${id}': image '${src}' is a URL. Skipping.`,
-    )
-    return context
-  }
-  const imgPage = getPageFromSource(src, page, context.pages, config)
-  if (imgPage._meta.outputType !== "IMAGE") {
-    // image is handled by another loader. skipping.
-    global.logger.log(
-      `- [transformImageTag] Page '${id}': image '${src}' is handled by another loader. Skipping.`,
-    )
-    return context
-  }
-  const imgId = imgPage._meta.id
-  const imageDetails = await getImageDetails(
-    imgPage,
-    id,
-    context,
-    options,
-    config,
-  )
-  context.pages[imgId] = imageDetails
-  if (!imageDetails._meta.is404) {
-    $(img).replaceWith(getImageTag($(img).clone(), imageDetails, options))
-    context.pages[id]._html = $.html()
-  }
-  return context
-}
-
-const transformMetaTag = async (
-  $,
-  selector,
-  page,
-  context,
-  options,
-  config,
-) => {
-  const id = page._meta.id
-  const content = $(selector).attr("content")
-  if (!content) {
-    return context
-  }
-  if (!isValidURL(content)) {
-    global.logger.warn(
-      `Page '${id}' in meta '${selector}': image URL '${content}' is not a valid URL.`,
-    )
-    return context
-  }
-  const url = new URL(content)
-  const imgPage = getPageFromSource(url.pathname, page, context.pages, config)
-  if (imgPage._meta.outputType !== "IMAGE") {
-    // image is handled by another loader. skipping.
-    global.logger.log(
-      `- [transformMetaTag] Page '${id}': image '${url.pathname}' is handled by another loader. Skipping.`,
-    )
-    return context
-  }
-  const imgId = imgPage._meta.id
-  const imageDetails = await getImageDetails(
-    imgPage,
-    id,
-    context,
-    options,
-    config,
-  )
-  context.pages[imgId] = imageDetails
-  if (!imageDetails._meta.is404) {
-    const newPathname = getDefaultDerivative(imageDetails).permalink
-    $(selector).attr("content", new URL(newPathname, url.origin))
-    context.pages[id]._html = $.html()
-  }
-  return context
-}

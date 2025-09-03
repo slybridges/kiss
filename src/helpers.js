@@ -1,6 +1,11 @@
 const _ = require("lodash")
 const fs = require("fs")
 const path = require("path")
+const {
+  findPageByPermalink,
+  findPageByDerivative,
+  findParentByPermalink,
+} = require("./indexing")
 
 // @ attribute format: @<attribute>:<value><terminator>
 // terminators: space, comma, newline, end of string, ', ",<, >, ), ], }, #, \
@@ -150,13 +155,13 @@ const getFullPath = (pathname, basePath, options = {}) => {
 
 /** Computes the input path based on the permalink by checking if the parent
  *  had a permalink different than their input path */
-const getInputPath = (permalink, pages, baseContentPath) => {
+const getInputPath = (permalink, pages, baseContentPath, indexes) => {
   const pathObject = path.parse(permalink)
+  const parentPermalink = pathObject.dir + "/"
+
   // search if a have a parent corresponding to this permalink's dir
-  const parent = _.find(
-    pages,
-    (page) => page.permalink === pathObject.dir + "/",
-  )
+  const parent = findParentByPermalink(indexes, parentPermalink, pages)
+
   if (!parent) {
     // no result: assume inputPath same as permalink
     return path.join(baseContentPath, permalink)
@@ -185,31 +190,29 @@ const getLocale = (context, sep = "-") => {
 }
 
 const getPageFromInputPath = (inputPath, pages) => {
-  const pageValues = Object.values(pages)
-  let page = pageValues.find((p) =>
-    p._meta.inputSources.map((s) => s.path).includes(inputPath),
-  )
-  return page
+  // O(n) search - this is only used in build.js where indexes aren't available
+  return Object.values(pages).find((page) => {
+    return page._meta?.inputSources?.some((source) => source.path === inputPath)
+  })
 }
 
 // Tries to find the page corresponding to the source
-// @attributes should have been resolved by mow
+// @attributes should have been resolved by now
 // Supports absolute, and relative paths
 const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   // source may have URL entities encoded. Decode them
   source = decodeURI(source)
-  const { throwIfNotFound = true } = options
+  const { throwIfNotFound = true, indexes } = options
   // value is a path: compute the permalink in case it is a relative path
   const permalink = getFullPath(source, parentPage.permalink, {
     throwIfInvalid: true,
   })
-  const page = Object.values(pages).find(
-    (p) =>
-      p.permalink === permalink ||
-      // in incremental builds,
-      // also search in derivatives in case the image source was already replaced during previous build
-      p.derivatives?.find((d) => d.permalink === permalink),
-  )
+
+  const page =
+    findPageByPermalink(indexes, permalink, pages) ||
+    // in incremental builds, we also search in derivatives in case the image source was already replaced during previous build
+    findPageByDerivative(indexes, permalink, pages)
+
   if (!page) {
     if (throwIfNotFound) {
       throw new Error(
@@ -355,6 +358,101 @@ const sortPages = (pages, sortBy, { skipUndefinedSort } = {}) => {
   return pages
 }
 
+// Placeholder constants used by jsonSafeStringify/jsonSafeParse
+// These unique strings replace special JS values that JSON can't handle
+const JSON_PLACEHOLDERS = {
+  FUNCTION: "__KISS_FUNCTION__",
+  UNDEFINED: "__KISS_UNDEFINED__",
+  DATE: "__KISS_DATE__",
+}
+
+/**
+ * Converts a JavaScript object to a JSON string while preserving special values
+ * that JSON.stringify normally can't handle (functions, dates, undefined).
+ *
+ * @param {Object} obj - The object to stringify
+ * @returns {Object} { jsonStr: string, specialValues: Map } - The JSON string and a map of special values
+ */
+const jsonSafeStringify = (obj) => {
+  const specialValues = new Map()
+
+  const replacer = (key, value) => {
+    // Handle functions - store them and replace with placeholder
+    if (typeof value === "function") {
+      const id = `${JSON_PLACEHOLDERS.FUNCTION}_${specialValues.size}`
+      specialValues.set(id, value)
+      return id
+    }
+    // Handle dates - store them and replace with placeholder
+    if (value instanceof Date) {
+      const id = `${JSON_PLACEHOLDERS.DATE}_${specialValues.size}`
+      specialValues.set(id, value)
+      return id
+    }
+    // Handle undefined - store it and replace with placeholder
+    if (value === undefined) {
+      const id = `${JSON_PLACEHOLDERS.UNDEFINED}_${specialValues.size}`
+      specialValues.set(id, undefined)
+      return id
+    }
+    return value
+  }
+
+  const jsonStr = JSON.stringify(obj, replacer)
+  return { jsonStr, specialValues }
+}
+
+/**
+ * Parses a JSON string back to an object while restoring special values
+ * that were replaced with placeholders during jsonSafeStringify.
+ *
+ * JSON.parse's reviver function DELETES properties when undefined is returned
+ * This causes properties with undefined values to be lost entirely, so we don't use this feature.
+ * Instead, We use a two-phase approach to get around this issue:
+ * 1. Parse the JSON normally to get object structure
+ * 2. Walk the object and restore special values in-place
+ * This preserves properties that have undefined values.
+ *
+ * @param {string} jsonStr - The JSON string to parse
+ * @param {Map} specialValues - Map of placeholders to their original values
+ * @returns {Object} - The restored JavaScript object with all special values intact
+ */
+const jsonSafeParse = (jsonStr, specialValues) => {
+  // First parse normally to get the object structure
+  const parsed = JSON.parse(jsonStr)
+
+  // Then walk through and restore special values
+  const restoreSpecialValues = (obj) => {
+    if (obj === null || typeof obj !== "object") {
+      return obj
+    }
+
+    for (const key in obj) {
+      const value = obj[key]
+
+      if (typeof value === "string") {
+        // Check if this is a placeholder that needs restoration
+        if (
+          value.startsWith(JSON_PLACEHOLDERS.FUNCTION) ||
+          value.startsWith(JSON_PLACEHOLDERS.DATE) ||
+          value.startsWith(JSON_PLACEHOLDERS.UNDEFINED)
+        ) {
+          if (specialValues.has(value)) {
+            obj[key] = specialValues.get(value)
+          }
+        }
+      } else if (typeof value === "object" && value !== null) {
+        // Recursively process nested objects
+        restoreSpecialValues(value)
+      }
+    }
+
+    return obj
+  }
+
+  return restoreSpecialValues(parsed)
+}
+
 module.exports = {
   AT_FILE_ATTRIBUTE_REGEX,
   AT_GENERIC_ATTRIBUTE_REGEX,
@@ -373,6 +471,8 @@ module.exports = {
   getParentPage,
   isChild,
   isValidURL,
+  jsonSafeParse,
+  jsonSafeStringify,
   omitDeep,
   relativeToAbsoluteAttributes,
   sortPageIds,
