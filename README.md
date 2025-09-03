@@ -12,11 +12,12 @@
 ## What kiss is
 
 - **Low-tech**: VanillaJS, small codebase, little abstractions.
-- **Minimal**: No framework, no code transpiler, little dependencies.
-- **Batteries included**: Comes out of the box with everything you need to make an SEO friendly website
+- **Minimal**: No framework, no code transpiler, few dependencies.
+- **Batteries included**: Comes out of the box with everything you need to make an SEO-friendly website.
+- **Built for performance**: Optimized for large sites with thousands of pages (one site we run has 5,000+ pages and builds under 6 minutes in the cloud and 3 minutes locally).
 - **Developer friendly**: `kiss start` will watch your changes and reload the browser after every build so that you can iterate quickly.
 - **Powerful**: Dynamic data computations, page data cascade and derived content generation.
-- **Extensible**: Easily add support for more content types, dynamic computations, writers, post build commands via hooks, etc.
+- **Extensible**: Easily add support for more content types, dynamic computations, writers, post-build commands via hooks, etc.
 
 ## How it works:
 
@@ -28,10 +29,10 @@
 - Create custom pages derived from the main data (e.g list of articles by tags or articles by author's)
 - Pre-compute derived data views based (e.g. compute the list of categories and subcategories for generating the navigation bar)
 
-kiss will automatically make your site SEO friendly by default:
+kiss will automatically make your site SEO-friendly by default:
 
 - Optimize images and make them responsive
-- Data cascade makes it trivial to generate meta and Open Graph tags
+- Data cascade makes it trivial to generate different sections of your site with different layouts and data content
 - Generate RSS feed
 - Generate sitemap
 - Generate a dump of your full site as JSON for debug or to implement actions via workers (like site search)
