@@ -13,12 +13,15 @@ const getElapsedTimestamp = () => {
   if (!startTime) {
     startTime = Date.now()
   }
-  
+
   const elapsed = Date.now() - startTime
   const totalSeconds = Math.floor(elapsed / 1000)
-  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
-  const seconds = String(totalSeconds % 60).padStart(2, '0')
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0")
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+    2,
+    "0",
+  )
+  const seconds = String(totalSeconds % 60).padStart(2, "0")
   return `${hours}:${minutes}:${seconds}`
 }
 
@@ -36,7 +39,9 @@ const log = (level, verbosity, ...args) => {
     log: { prefix: "   ", color: chalk.white },
     success: { prefix: " OK ", color: chalk.bgGreen },
     warn: { prefix: "WARN", color: chalk.bgHex("FF6600").black },
-    section: { handler: (config, ...args) => console.log(timestamp, chalk.bold(...args)) },
+    section: {
+      handler: (config, ...args) => console.log(timestamp, chalk.bold(...args)),
+    },
   }
 
   global.logger.counts[level]++

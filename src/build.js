@@ -12,6 +12,7 @@ const {
   getPageFromInputPath,
   relativeToAbsoluteAttributes,
 } = require("./helpers")
+const { buildPageIndexes } = require("./indexing")
 const { baseLoader } = require("./loaders")
 const { setGlobalLogger } = require("./logger")
 
@@ -95,6 +96,26 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
   if (buildFlags.dynamicData) {
     global.logger.section("Computing dynamic page context")
     context = computeAllPagesData(context, config, buildFlags)
+  }
+
+  // Build indexes for O(1) lookups during transforms after dynamic data is computed
+  if (config.defaults.enablePageIndexes) {
+    global.logger.info("Building page indexes for fast lookups")
+    context._pageIndexes = buildPageIndexes(context.pages)
+    global.logger.log(
+      `- Built ${Object.keys(context._pageIndexes).length} indexes for ${Object.keys(context.pages).length} pages`,
+    )
+  } else {
+    // Indexes disabled - transforms will use O(n) fallbacks
+    // This is supported but not recommended for large sites
+    global.logger.info(
+      "Page indexes disabled - transforms will use O(n) page searches",
+    )
+    if (Object.keys(context.pages).length > 1000) {
+      global.logger.warn(
+        "Consider enabling page indexes for better performance (set config.defaults.enablePageIndexes = true)",
+      )
+    }
   }
 
   if (buildFlags.dataViews) {
