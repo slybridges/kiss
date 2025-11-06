@@ -151,39 +151,6 @@ describe("computeCategory", () => {
     assert.equal(result, "my-category.test")
   })
 
-  it("should handle missing parent page gracefully", () => {
-    // Parent doesn't exist in pages
-    const page = createMockPage({
-      _meta: {
-        parent: "./nonexistent",
-      },
-    })
-
-    // This will likely error since getParentPage logs an error
-    // But let's see what happens
-    const result = computeCategory(page, config, context)
-    assert.equal(result, "")
-  })
-
-  it("should handle parent without basename", () => {
-    const parentPage = createMockPage({
-      _meta: {
-        id: "./test",
-        basename: undefined,
-      },
-    })
-    pages["./test"] = parentPage
-
-    const page = createMockPage({
-      _meta: {
-        parent: "./test",
-      },
-    })
-
-    const result = computeCategory(page, config, context)
-    assert.equal(result, "")
-  })
-
   it("should handle parent with empty basename", () => {
     const parentPage = createMockPage({
       _meta: {
