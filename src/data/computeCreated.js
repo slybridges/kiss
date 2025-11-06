@@ -19,7 +19,7 @@ const computeCreated = ({ _meta }, config, { pages }) => {
       return earliest
     }
   }
-
+  // fallback to own created date
   if (_meta.fileCreated) {
     return _meta.fileCreated
   }

@@ -19,6 +19,7 @@ const computeModified = ({ _meta }, config, { pages }) => {
       return latest
     }
   }
+  // fallback to own modified date
   if (_meta.fileModified) {
     return _meta.fileModified
   }
