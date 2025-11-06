@@ -814,6 +814,7 @@ const loadContent = async (config, context, buildFlags) => {
 
       if (isIndexFile) {
         // Index files set cascadeData - this is what children will inherit
+        // eslint-disable-next-line no-unused-vars
         const { _meta, ...cascadeableData } = page
         page._meta.cascadeData = cascadeableData
       } else if (isPostFile) {
@@ -1050,7 +1051,8 @@ const writeStaticSite = async (context, config, buildFlags) => {
 module.exports._applyTransforms = applyTransforms
 module.exports._computeBuildFlags = computeBuildFlags
 module.exports._computeBuildPageIDs = computeBuildPageIDs
-module.exports._computeIncrementalHookBuildFlag = computeIncrementalHookBuildFlag
+module.exports._computeIncrementalHookBuildFlag =
+  computeIncrementalHookBuildFlag
 module.exports._computeDataViews = computeDataViews
 module.exports._computePageData = computePageData
 module.exports._computeAllPagesData = computeAllPagesData

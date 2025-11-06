@@ -59,7 +59,9 @@ const findPageByPermalink = (indexes, permalink, pages) => {
  */
 const findPageByInputPath = (indexes, inputPath, pages) => {
   return findInIndex(indexes, "byInputPath", inputPath, () => {
-    const result = Object.values(pages).find((p) => p._meta?.inputPath === inputPath)
+    const result = Object.values(pages).find(
+      (p) => p._meta?.inputPath === inputPath,
+    )
     return result || null
   })
 }
@@ -70,7 +72,9 @@ const findPageByInputPath = (indexes, inputPath, pages) => {
 const findPageByIdAndLang = (indexes, id, lang, pages) => {
   const key = `${id}:${lang}`
   return findInIndex(indexes, "byIdAndLang", key, () => {
-    const result = Object.values(pages).find((p) => p.id === id && p.lang === lang)
+    const result = Object.values(pages).find(
+      (p) => p.id === id && p.lang === lang,
+    )
     return result || null
   })
 }
@@ -92,7 +96,9 @@ const findPageByDerivative = (indexes, derivativePermalink, pages) => {
  */
 const findParentByPermalink = (indexes, parentPermalink, pages) => {
   return findInIndex(indexes, "byParentPermalink", parentPermalink, () => {
-    const result = Object.values(pages).find((p) => p.permalink === parentPermalink)
+    const result = Object.values(pages).find(
+      (p) => p.permalink === parentPermalink,
+    )
     return result || null
   })
 }

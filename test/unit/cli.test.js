@@ -1,6 +1,5 @@
 const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
-const { execSync } = require("child_process")
 const path = require("path")
 const { mockProcessExit, mockProcessArgv } = require("../../test-utils/helpers")
 
@@ -157,11 +156,8 @@ describe("cli", () => {
 
   describe("command options", () => {
     it("should handle verbosity option", () => {
-      let capturedArgs = null
-
       const mockIndex = {
-        build: (args) => {
-          capturedArgs = args
+        build: () => {
           return Promise.resolve()
         },
         serve: () => Promise.resolve(),
@@ -175,7 +171,7 @@ describe("cli", () => {
 
       try {
         runCLI(["build", "--verbosity", "warn"])
-      } catch (error) {
+      } catch {
         // Ignore execution errors, we're just testing argument parsing
       }
 
@@ -198,7 +194,7 @@ describe("cli", () => {
       // Should accept -v as alias for --verbosity
       try {
         runCLI(["build", "-v", "error"])
-      } catch (error) {
+      } catch {
         // Ignore execution errors
       }
     })
@@ -217,7 +213,7 @@ describe("cli", () => {
 
       try {
         runCLI(["build", "--unsafe-build"])
-      } catch (error) {
+      } catch {
         // Ignore execution errors
       }
     })
@@ -236,7 +232,7 @@ describe("cli", () => {
 
       try {
         runCLI(["build", "-u"])
-      } catch (error) {
+      } catch {
         // Ignore execution errors
       }
     })
@@ -255,7 +251,7 @@ describe("cli", () => {
 
       try {
         runCLI(["watch", "--incremental"])
-      } catch (error) {
+      } catch {
         // Ignore execution errors
       }
     })
@@ -280,7 +276,7 @@ describe("cli", () => {
       validLevels.forEach((level) => {
         try {
           runCLI(["build", "--verbosity", level])
-        } catch (error) {
+        } catch {
           // Execution errors are expected, but argument validation should pass
         }
       })

@@ -13,7 +13,8 @@ const computeSiteLastUpdatedDataView = ({ pages }, options, config) => {
   // Find the first page with a non-null, non-undefined value
   for (const page of lastUpdated) {
     const value = _.get(page, config.defaults.pageUpdatedAttribute)
-    if (value != null) { // Checks for both null and undefined
+    if (value != null) {
+      // Checks for both null and undefined
       return value
     }
   }

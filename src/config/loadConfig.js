@@ -14,8 +14,10 @@ const loadConfig = (options = {}) => {
   let config
   try {
     configFunc = require(relativeConfigFile)
-    if (typeof configFunc !== 'function') {
-      throw new TypeError(`Config file must export a function, got ${typeof configFunc}`)
+    if (typeof configFunc !== "function") {
+      throw new TypeError(
+        `Config file must export a function, got ${typeof configFunc}`,
+      )
     }
     config = configFunc(baseConfig)
   } catch (e) {

@@ -4,23 +4,35 @@ const initialPageData = require("../../../src/data/initialPageData")
 
 describe("initialPageData", () => {
   it("should have all expected properties", () => {
-    assert(initialPageData.hasOwnProperty("author"))
-    assert(initialPageData.hasOwnProperty("category"))
-    assert(initialPageData.hasOwnProperty("cover"))
-    assert(initialPageData.hasOwnProperty("created"))
-    assert(initialPageData.hasOwnProperty("description"))
-    assert(initialPageData.hasOwnProperty("excludeFromCollection"))
-    assert(initialPageData.hasOwnProperty("excludeFromSitemap"))
-    assert(initialPageData.hasOwnProperty("excludeFromWrite"))
-    assert(initialPageData.hasOwnProperty("image"))
-    assert(initialPageData.hasOwnProperty("layout"))
-    assert(initialPageData.hasOwnProperty("modified"))
-    assert(initialPageData.hasOwnProperty("permalink"))
-    assert(initialPageData.hasOwnProperty("slug"))
-    assert(initialPageData.hasOwnProperty("title"))
-    assert(initialPageData.hasOwnProperty("url"))
-    assert(initialPageData.hasOwnProperty("_meta"))
-    assert(initialPageData.hasOwnProperty("_html"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "author"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "category"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "cover"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "created"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "description"))
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        initialPageData,
+        "excludeFromCollection",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        initialPageData,
+        "excludeFromSitemap",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(initialPageData, "excludeFromWrite"),
+    )
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "image"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "layout"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "modified"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "permalink"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "slug"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "title"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "url"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "_meta"))
+    assert(Object.prototype.hasOwnProperty.call(initialPageData, "_html"))
   })
 
   it("should have correct default values", () => {
@@ -52,21 +64,21 @@ describe("initialPageData", () => {
   it("should have correct _meta structure", () => {
     const meta = initialPageData._meta
 
-    assert(meta.hasOwnProperty("ascendants"))
-    assert(meta.hasOwnProperty("id"))
-    assert(meta.hasOwnProperty("basename"))
-    assert(meta.hasOwnProperty("children"))
-    assert(meta.hasOwnProperty("descendants"))
-    assert(meta.hasOwnProperty("fileCreated"))
-    assert(meta.hasOwnProperty("fileModified"))
-    assert(meta.hasOwnProperty("inputPath"))
-    assert(meta.hasOwnProperty("inputSources"))
-    assert(meta.hasOwnProperty("isCollection"))
-    assert(meta.hasOwnProperty("isDirectory"))
-    assert(meta.hasOwnProperty("isPost"))
-    assert(meta.hasOwnProperty("outputPath"))
-    assert(meta.hasOwnProperty("parent"))
-    assert(meta.hasOwnProperty("outputType"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "ascendants"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "id"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "basename"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "children"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "descendants"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "fileCreated"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "fileModified"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "inputPath"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "inputSources"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "isCollection"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "isDirectory"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "isPost"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "outputPath"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "parent"))
+    assert(Object.prototype.hasOwnProperty.call(meta, "outputType"))
   })
 
   it("should have correct _meta default values", () => {

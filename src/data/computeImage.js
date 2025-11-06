@@ -91,7 +91,9 @@ const getImagePermalink = (
     // external image, data URI or @attribute that will be resolved later
     return src
   }
-  const pageFound = getPageFromSource(src, page, pages, config, { throwIfNotFound: false })
+  const pageFound = getPageFromSource(src, page, pages, config, {
+    throwIfNotFound: false,
+  })
   if (!pageFound) {
     // image page not found, return the src as-is
     return src

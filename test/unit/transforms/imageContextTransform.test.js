@@ -219,7 +219,7 @@ describe("imageContextTransform", () => {
   })
 
   it("should skip images that are not found", async () => {
-    const { logger, captured } =
+    const { logger } =
       require("../../../test-utils/helpers").createCapturingLogger()
     global.logger = logger
 
@@ -320,7 +320,7 @@ describe("imageContextTransform", () => {
   })
 
   it("should warn about invalid meta tag URLs", async () => {
-    const { logger, captured } =
+    const { logger } =
       require("../../../test-utils/helpers").createCapturingLogger()
     global.logger = logger
 

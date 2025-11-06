@@ -8,6 +8,7 @@ const {
 
 // Helper to strip ANSI color codes
 // Note: Not importing from helpers.js to avoid global logger mock interference
+// eslint-disable-next-line no-control-regex
 const stripAnsi = (str) => str.replace(/\x1B\[\d+m/g, "")
 
 describe("logger", () => {

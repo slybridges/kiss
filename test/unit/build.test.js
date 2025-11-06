@@ -1,7 +1,5 @@
 const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
-const fs = require("fs-extra")
-const path = require("path")
 
 // Mock dependencies that build.js imports
 // Shared config object that can be modified by tests
@@ -71,7 +69,6 @@ const mockBaseLoader = () => ({
 
 const {
   mockGlobalLogger: mockGlobalLoggerHelper,
-  restoreGlobalLogger: restoreGlobalLoggerHelper,
   createTempDir,
   cleanupTempDir,
 } = require("../../test-utils/helpers")
@@ -794,7 +791,7 @@ describe("build", () => {
             {
               action: "run",
               handler: () => {},
-              incrementalRebuild: (file, context) => file.includes("test"),
+              incrementalRebuild: (file) => file.includes("test"),
             },
           ],
         },
@@ -834,7 +831,7 @@ describe("build", () => {
             {
               action: "run",
               handler: () => {},
-              incrementalRebuild: (file) => false,
+              incrementalRebuild: () => false,
             },
           ],
         },
@@ -964,13 +961,13 @@ describe("build", () => {
     })
 
     it("should handle transform errors", async () => {
-      const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         ["./test", { _meta: { id: "./test", outputType: "HTML" } }],
       ]
 
+      const originalLoadConfig = mockConfig.loadConfig
       mockConfig.loadConfig = () => ({
         ...originalLoadConfig(),
         transforms: [
@@ -1022,7 +1019,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         ["./test", { _meta: { id: "./test", outputType: "HTML" } }],
       ]
 
@@ -1183,7 +1180,7 @@ describe("build", () => {
         writers: [
           {
             outputType: "HTML",
-            handler: async (page) => {},
+            handler: async () => {},
           },
         ],
       })
@@ -1203,7 +1200,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         [
           "./test",
           {
@@ -1246,7 +1243,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         [
           "./test",
           {
@@ -1289,7 +1286,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         [
           "./test",
           {
@@ -1331,7 +1328,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         [
           "./test",
           {
@@ -1364,7 +1361,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
-      mockHelpers.getBuildEntries = (context) => [
+      mockHelpers.getBuildEntries = () => [
         [
           "./test",
           {
@@ -1408,7 +1405,7 @@ describe("build", () => {
         writers: [
           {
             scope: "CONTEXT",
-            handler: async (context) => {},
+            handler: async () => {},
             target: "test.json",
           },
         ],
@@ -1566,7 +1563,6 @@ describe("build", () => {
 
   describe("dynamic data computation", () => {
     it("should handle computePageData errors", async () => {
-      const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
 
       mockHelpers.getBuildEntries = () => [
@@ -1940,7 +1936,6 @@ describe("build", () => {
 
   describe("transform scenarios with outputType filtering", () => {
     it("should apply transform with incremental message", async () => {
-      const originalLoadConfig = mockConfig.loadConfig
       const originalGetBuildEntries = mockHelpers.getBuildEntries
       const originalGetPageFromInputPath = mockHelpers.getPageFromInputPath
 
@@ -1962,6 +1957,7 @@ describe("build", () => {
         ],
       ]
 
+      const originalLoadConfig = mockConfig.loadConfig
       const customConfig = {
         ...originalLoadConfig(),
         dirs: {
@@ -2002,7 +1998,6 @@ describe("build", () => {
       const result = await build(options, lastBuild, 1)
       assert.ok(result, "Build should complete with incremental transforms")
 
-      mockConfig.loadConfig = originalLoadConfig
       mockHelpers.getBuildEntries = originalGetBuildEntries
       mockHelpers.getPageFromInputPath = originalGetPageFromInputPath
     })
@@ -2037,7 +2032,6 @@ describe("build", () => {
       const result = await build(options)
       assert.ok(result, "Build should complete")
 
-      mockConfig.loadConfig = originalLoadConfig
       mockHelpers.getBuildEntries = originalGetBuildEntries
     })
 
@@ -2046,7 +2040,7 @@ describe("build", () => {
       const originalLoadConfig = mockConfig.loadConfig
 
       // Return entries but with different outputType
-      mockHelpers.getBuildEntries = (context, buildFlags) => {
+      mockHelpers.getBuildEntries = (_context, buildFlags) => {
         if (buildFlags && buildFlags.incremental) {
           return []
         }
@@ -2077,7 +2071,6 @@ describe("build", () => {
       const result = await build(options)
       assert.ok(result, "Build should complete")
 
-      mockConfig.loadConfig = originalLoadConfig
       mockHelpers.getBuildEntries = originalGetBuildEntries
     })
   })

@@ -64,7 +64,7 @@ describe("jsonSafeStringify", () => {
       undef2: undefined,
     }
 
-    const { jsonStr, specialValues } = jsonSafeStringify(obj)
+    const { specialValues } = jsonSafeStringify(obj)
     assert.equal(specialValues.size, 6)
   })
 
@@ -81,7 +81,7 @@ describe("jsonSafeStringify", () => {
       },
     }
 
-    const { jsonStr, specialValues } = jsonSafeStringify(obj)
+    const { specialValues } = jsonSafeStringify(obj)
     assert.equal(specialValues.size, 3)
   })
 

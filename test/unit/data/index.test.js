@@ -4,17 +4,19 @@ const dataModule = require("../../../src/data")
 
 describe("data module exports", () => {
   it("should export all computation functions", () => {
-    assert(dataModule.hasOwnProperty("computeCategory"))
-    assert(dataModule.hasOwnProperty("computeCreated"))
-    assert(dataModule.hasOwnProperty("computeDescription"))
-    assert(dataModule.hasOwnProperty("computeImage"))
-    assert(dataModule.hasOwnProperty("computeLayout"))
-    assert(dataModule.hasOwnProperty("computeMeta"))
-    assert(dataModule.hasOwnProperty("computeModified"))
-    assert(dataModule.hasOwnProperty("computePermalink"))
-    assert(dataModule.hasOwnProperty("computeTitle"))
-    assert(dataModule.hasOwnProperty("computeURL"))
-    assert(dataModule.hasOwnProperty("initialPageData"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeCategory"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeCreated"))
+    assert(
+      Object.prototype.hasOwnProperty.call(dataModule, "computeDescription"),
+    )
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeImage"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeLayout"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeMeta"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeModified"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computePermalink"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeTitle"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "computeURL"))
+    assert(Object.prototype.hasOwnProperty.call(dataModule, "initialPageData"))
   })
 
   it("should export correct function types", () => {
@@ -32,12 +34,42 @@ describe("data module exports", () => {
   })
 
   it("should export computeMeta sub-functions", () => {
-    assert(dataModule.computeMeta.hasOwnProperty("computeAscendants"))
-    assert(dataModule.computeMeta.hasOwnProperty("computeChildren"))
-    assert(dataModule.computeMeta.hasOwnProperty("computeDescendants"))
-    assert(dataModule.computeMeta.hasOwnProperty("computeIsCollection"))
-    assert(dataModule.computeMeta.hasOwnProperty("computeIsPost"))
-    assert(dataModule.computeMeta.hasOwnProperty("computeOutputPath"))
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeAscendants",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeChildren",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeDescendants",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeIsCollection",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeIsPost",
+      ),
+    )
+    assert(
+      Object.prototype.hasOwnProperty.call(
+        dataModule.computeMeta,
+        "computeOutputPath",
+      ),
+    )
 
     assert.equal(typeof dataModule.computeMeta.computeAscendants, "function")
     assert.equal(typeof dataModule.computeMeta.computeChildren, "function")

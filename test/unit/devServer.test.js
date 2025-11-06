@@ -45,7 +45,7 @@ const mockChokidar = {
         handlers.forEach((handler) => {
           try {
             handler(...args)
-          } catch (err) {
+          } catch {
             // Ignore errors in test
           }
         })
@@ -92,7 +92,6 @@ const mockBuild = async (options = {}) => {
 
 const {
   mockGlobalLogger: mockGlobalLoggerHelper,
-  restoreGlobalLogger: restoreGlobalLoggerHelper,
   createTempDir,
   cleanupTempDir,
   mockProcessExit,
@@ -151,7 +150,7 @@ describe("devServer", () => {
     mockChokidar.watchers.forEach((w) => {
       try {
         w.close()
-      } catch (e) {
+      } catch {
         // Ignore errors
       }
     })
@@ -160,7 +159,7 @@ describe("devServer", () => {
     mockBrowserSync.instances.forEach((i) => {
       try {
         i.exit()
-      } catch (e) {
+      } catch {
         // Ignore errors
       }
     })
@@ -419,7 +418,6 @@ describe("devServer", () => {
       await watch(options)
 
       assert.equal(mockChokidar.watchers.length, 1)
-      const watcher = mockChokidar.watchers[0]
 
       // Simulate SIGINT signal
       const sigintHandlers = processListeners.get("SIGINT") || []

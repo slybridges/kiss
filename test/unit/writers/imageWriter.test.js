@@ -2,11 +2,7 @@ const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
 const fs = require("fs-extra")
 const path = require("path")
-const {
-  createTempDir,
-  cleanupTempDir,
-  createTestFile,
-} = require("../../../test-utils/helpers")
+const { createTempDir, cleanupTempDir } = require("../../../test-utils/helpers")
 
 // Mock sharp module
 const mockSharp = {

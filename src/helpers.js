@@ -403,7 +403,7 @@ const jsonSafeStringify = (obj) => {
       dateMap.set(path.join("."), o)
     } else if (o && typeof o === "object") {
       for (const key in o) {
-        if (o.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(o, key)) {
           findDates(o[key], [...path, key])
         }
       }
@@ -412,8 +412,8 @@ const jsonSafeStringify = (obj) => {
   findDates(obj)
 
   const replacer = (key, value) => {
-    // Check if this path corresponds to a Date object
-    const currentPath = this && this.path ? [...this.path, key].join(".") : key
+    // Check if this path corresponds to a Date object (unused for now)
+    // const currentPath = this && this.path ? [...this.path, key].join(".") : key
 
     // Handle functions - store them and replace with placeholder
     if (typeof value === "function") {

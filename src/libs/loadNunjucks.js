@@ -16,7 +16,7 @@ const loadNunjucks = (_, config, data, buildFlags = {}) => {
     // Watch mode changed - must create a new environment
     // This can happen if tests or builds mix incremental and non-incremental modes
     global.logger?.warn?.(
-      `Recreating Nunjucks environment due to watch mode change (${existingEnv.opts.watch} → ${watchMode})`
+      `Recreating Nunjucks environment due to watch mode change (${existingEnv.opts.watch} → ${watchMode})`,
     )
   }
 

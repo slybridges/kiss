@@ -177,6 +177,7 @@ const createCapturingLogger = () => {
 }
 
 // Utility helpers
+// eslint-disable-next-line no-control-regex
 const stripAnsi = (str) => str.replace(/\x1B\[\d+m/g, "")
 
 const mockProcessExit = () => {

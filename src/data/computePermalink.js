@@ -7,10 +7,7 @@ const computePermalink = ({ slug, _meta }, config, { pages }) => {
   if (contentDir.endsWith("/")) {
     contentDir = contentDir.slice(0, -1)
   }
-  let permalink = _meta.inputPath.replace(
-    new RegExp(`^${contentDir}`),
-    "",
-  )
+  let permalink = _meta.inputPath.replace(new RegExp(`^${contentDir}`), "")
   if (_meta.outputType === "HTML") {
     permalink = permalink
       // replace index.[ext] or post.[ext] by terminal /

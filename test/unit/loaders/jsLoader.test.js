@@ -1,6 +1,5 @@
 const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
-const path = require("path")
 const { jsLoader } = require("../../../src/loaders")
 const {
   createTempDir,

@@ -1,7 +1,6 @@
 const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
 const path = require("path")
-const fs = require("fs")
 const { loadConfig, defaultConfig } = require("../../../src/config")
 const {
   createTempDir,
@@ -236,7 +235,7 @@ describe("loadConfig", () => {
       module.exports = (defaultConfig) => {
         const customLoader = { handler: () => {}, namespace: "custom" }
         const customTransform = { handler: () => {}, outputType: "HTML" }
-        
+
         return {
           ...defaultConfig,
           context: {

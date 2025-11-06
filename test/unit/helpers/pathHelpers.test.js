@@ -1,6 +1,5 @@
 const { describe, it } = require("node:test")
 const assert = require("assert/strict")
-const path = require("path")
 const { getFullPath, getInputPath } = require("../../../src/helpers")
 const { createMockPage } = require("../../../test-utils/helpers")
 

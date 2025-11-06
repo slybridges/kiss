@@ -1,10 +1,8 @@
 const { describe, it, beforeEach } = require("node:test")
 const assert = require("assert/strict")
-const path = require("path")
 const build = require("../../src/build")
 const {
   mockGlobalLogger,
-  restoreGlobalLogger,
   createMockConfig,
   createMockContext,
 } = require("../../test-utils/helpers")
@@ -29,10 +27,8 @@ const {
 } = build
 
 describe("build.js private functions", () => {
-  let originalLogger
-
   beforeEach(() => {
-    originalLogger = mockGlobalLogger()
+    mockGlobalLogger()
     global.logger.success = () => {}
     global.logger.counts = { error: 0, warn: 0 }
   })
@@ -287,7 +283,7 @@ describe("build.js private functions", () => {
         {
           action: "run",
           handler: () => {},
-          incrementalRebuild: (file, context) => {
+          incrementalRebuild: (file) => {
             called = true
             return file.includes("test")
           },
