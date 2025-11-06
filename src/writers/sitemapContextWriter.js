@@ -12,14 +12,14 @@ const pageObject = (page, options, config) => {
     _.get(page, config.defaults.pagePublishedAttribute)
   let changeFreq, priority
   if (page.permalink === "/") {
-    changeFreq = options.changeFreq.home
-    priority = options.priority.home
+    changeFreq = options.changeFreq?.home
+    priority = options.priority?.home
   } else if (page._meta.isPost) {
-    changeFreq = options.changeFreq.post
-    priority = options.priority.post
+    changeFreq = options.changeFreq?.post
+    priority = options.priority?.post
   } else {
-    changeFreq = options.changeFreq.collection
-    priority = options.priority.collection
+    changeFreq = options.changeFreq?.collection
+    priority = options.priority?.collection
   }
   if (lastMod) {
     try {
@@ -37,7 +37,7 @@ const pageObject = (page, options, config) => {
       { loc: page.url },
       { lastmod: lastMod },
       { changefreq: changeFreq },
-      { priority: priority.toFixed(1) },
+      { priority: priority != null ? priority.toFixed(1) : undefined },
     ],
   }
 }

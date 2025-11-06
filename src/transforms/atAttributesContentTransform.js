@@ -56,7 +56,12 @@ const atAttributesContentTransform = (page, options, config, context) => {
 
   // Inline helper for permalink lookups - most common type
   const findByPermalink = hasIndexes
-    ? (permalink) => context._pageIndexes.byPermalink.get(permalink)
+    ? (permalink) => {
+        // Check both main permalinks and derivative permalinks
+        const page = context._pageIndexes.byPermalink.get(permalink)
+        if (page) return page
+        return context._pageIndexes.byDerivative.get(permalink)
+      }
     : (permalink) =>
         Object.values(pages).find(
           (p) =>
@@ -193,7 +198,10 @@ const dataAttributeResolver = (
  */
 const fileAttributeResolver = (filepath, page, config, context, lookups) => {
   if (!path.isAbsolute(filepath)) {
-    return [null, `@file '${filepath}' must be absolute at this point`]
+    return [
+      null,
+      `@file '${filepath}' must be absolute at this point. When using @file in templates, always use absolute paths.`,
+    ]
   }
   const fullPath = path.join(config.dirs.content, filepath)
 
@@ -264,6 +272,7 @@ const idAttributeResolver = (
 
 /**
  * Resolves @permalink attributes by finding pages with exact permalink matches.
+ * Also handles derivative permalinks by returning the correct permalink value.
  */
 const permalinkAttributeResolver = (
   permalink,
@@ -271,12 +280,44 @@ const permalinkAttributeResolver = (
   config,
   context,
   lookups,
+  checkAlternate = true,
 ) => {
   const pageFound = lookups.findByPermalink(permalink)
 
-  if (pageFound) {
-    return [pageFound, null]
-  } else {
-    return [null, `@permalink not found '${permalink}'`]
+  // permalinks must start with /
+  if (!permalink.startsWith("/")) {
+    return [null, `@permalink '${permalink}' must start with '/'`]
   }
+
+  if (pageFound) {
+    // If the page's permalink doesn't match what we searched for,
+    // it means we found it via a derivative. Return a wrapper with the derivative permalink.
+    if (pageFound.permalink !== permalink) {
+      return [{ ...pageFound, permalink }, null]
+    }
+    return [pageFound, null]
+  } else if (checkAlternate) {
+    let altPermalink = null
+    // if there is a trailing /, try without it and vice versa
+    if (permalink.endsWith("/")) {
+      altPermalink = permalink.slice(0, -1)
+    } else {
+      altPermalink = permalink + "/"
+    }
+    const alternate = permalinkAttributeResolver(
+      altPermalink,
+      page,
+      config,
+      context,
+      lookups,
+      false,
+    )
+    if (alternate[0]) {
+      return [
+        null,
+        `@permalink not found '${permalink}'. Did you mean '${alternate[0].permalink}'?`,
+      ]
+    }
+  }
+  return [null, `@permalink not found '${permalink}'`]
 }

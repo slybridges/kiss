@@ -11,25 +11,34 @@ const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
   if (basename === config.dirs.content) {
     basename = ""
   }
-  // FIXME: the parent data we want here is the one coming from index.* files
-  // and not any that was overwritten by post.* files
+
+  // Determine if this is an index or post file
+  const isIndexFile = basename.startsWith("index.")
+  const isPostFile = basename.startsWith("post.")
+
+  // Get parent data for cascading
+  // For post files, we want the full parent (including post overrides)
+  // For all other files, we want only index file data (cascadeData)
   const parentData = parentId
-    ? getParentPage(pages, parentId, inputPathObject.name === "post")
+    ? getParentPage(pages, parentId, isPostFile) || {}
     : {}
+
   let isDirectory = options.isDirectory || inputPath.endsWith("/")
   let id = options.id || computePageId(inputPath, config)
   let outputType = options.outputType || "HTML"
   let collectionGroup = options.collectionGroup || "directory"
+
+  // Only allow HTML files to override parent pages
   if (outputType === "HTML") {
     // only files converted as HTML can override
     // they parent entry
-    if (basename.startsWith("index.")) {
+    if (isIndexFile) {
       // directory index, replace parent and most parent _meta
       id = _.get(parentData, "_meta.id", "")
       parentId = _.get(parentData, "_meta.parent", "")
       basename = _.get(parentData, "_meta.basename", "")
       isDirectory = true
-    } else if (basename.startsWith("post.")) {
+    } else if (isPostFile) {
       // directory post, replace parent and overwrite the rest
       id = _.get(parentData, "_meta.id", "")
       parentId = _.get(parentData, "_meta.parent", "")
@@ -64,13 +73,14 @@ const baseLoader = (inputPath, options = {}, page = {}, pages, config) => {
       loaderId: file?.loaderId,
     })
   }
-  if (file) {
+  if (file && file.stats) {
     page._meta.fileCreated = file.stats.ctime
     page._meta.fileModified = file.stats.mtime
   }
   if (buildVersion !== undefined) {
     page._meta.buildVersion = buildVersion
   }
+
   return page
 }
 

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | default(site.title) }}</title>
+    {% if description %}
+      <meta name="description" content="{{ description }}">
+    {% endif %}
+  </head>
+  <body>
+    <header>
+      <h1>{{ site.title }}</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="@id:about-page-id">About</a>
+        <a href="@file:/contact.html">Contact</a>
+        <a href="@permalink:/blog/">Blog</a>
+      </nav>
+    </header>
+    <main>
+      {% block content %}
+        {{ content | safe }}
+      {% endblock %}
+    </main>
+    <footer>
+      <p>&copy; 2024 {{ site.title }}</p>
+    </footer>
+  </body>
+</html>

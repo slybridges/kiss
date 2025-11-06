@@ -1,0 +1,27 @@
+---
+title: Contact Us
+description: Get in touch with our team
+layout: page.njk
+email: contact@example.com
+---
+
+<h1>Contact Us</h1>
+<p>We'd love to hear from you! Reach out through any of these channels:</p>
+<p>Site URL: <a href="@data:site.url">@data:site.url</a></p>
+<p>For more information, check out:</p>
+<ul>
+  <li><a href="./about-us">About page (bare link)</a>.</li>
+  <li>
+    <a href="@permalink:/about-us">About page (using at permalink attribute)</a
+    >.
+  </li>
+  <li>
+    <a href="@file:about.html">About page (using at file relative attribute)</a
+    >.
+  </li>
+  <li>
+    <a href="@file:/about.html">About page (using at file absolute attribute)</a
+    >.
+  </li>
+  <li><a href="@id:about-page-id">About page (using at id attribute)</a>.</li>
+</ul>

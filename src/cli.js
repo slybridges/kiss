@@ -32,4 +32,5 @@ yargs(hideBin(process.argv))
     default: false,
     describe: "Performs incremental builds on watch (experimental)",
   })
+  .strict()
   .demandCommand(1, "Enter a command").argv

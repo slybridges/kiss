@@ -1,0 +1,33 @@
+{% extends "base.njk" %}
+
+{% block content %}
+<div class="collection">
+  <h1>{{ title }}</h1>
+  {% if description %}
+  <p class="description">{{ description }}</p>
+  {% endif %}
+
+  {% if children and children.length > 0 %}
+  <ul class="post-list">
+    {% for childId in children %}
+    {% set child = pages[childId] %}
+    <li>
+      <article>
+        <h2><a href="{{ child.url }}">{{ child.title }}</a></h2>
+        {% if child.description %}
+        <p>{{ child.description }}</p>
+        {% endif %}
+        {% if child.created %}
+        <time datetime="{{ child.created | date('YYYY-MM-DD') }}">
+          {{ child.created | date('MMMM D, YYYY') }}
+        </time>
+        {% endif %}
+      </article>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No posts found.</p>
+  {% endif %}
+</div>
+{% endblock %}

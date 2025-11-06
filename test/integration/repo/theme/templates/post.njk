@@ -1,0 +1,28 @@
+{% extends "base.njk" %}
+
+{% block content %}
+<article class="blog-post">
+  <header>
+    <h1>{{ title }}</h1>
+    {% if created %}
+    <time datetime="{{ created }}">
+      Published: {{ created }}
+    </time>
+    {% endif %}
+    {% if author %}
+    <p class="author">By {{ author }}</p>
+    {% endif %}
+    {% if tags %}
+    <ul class="tags">
+      {% for tag in tags %}
+      <li><a href="/tags/{{ tag | slugify }}">{{ tag }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </header>
+
+  <div class="content">
+    {{ content | safe }}
+  </div>
+</article>
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "title": "Blog Post from JSON",
+  "description": "This post is loaded from a JSON file",
+  "author": "john",
+  "created": "2024-01-15",
+  "slug": "json",
+  "tags": ["json", "test", "content"],
+  "content": "<p>This is a blog post loaded from a JSON file. It demonstrates that kiss can load content from various formats.</p><p>JSON is great for structured data!</p>"
+}

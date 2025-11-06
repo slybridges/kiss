@@ -6,7 +6,7 @@ const jsonLoader = (inputPath, options, page, pages, config) => {
   const published = fileData[config.defaults.pagePublishedAttribute]
   const updated = fileData[config.defaults.pageUpdatedAttribute]
   if (published && typeof published === "string") {
-    fileData[config.defaults.pagePublishedAttribut] = parseISO(published)
+    fileData[config.defaults.pagePublishedAttribute] = parseISO(published)
   }
   if (updated && typeof updated === "string") {
     fileData[config.defaults.pageUpdatedAttribute] = parseISO(updated)

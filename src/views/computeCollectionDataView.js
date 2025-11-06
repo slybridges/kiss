@@ -39,8 +39,13 @@ const computeCollectionDataView = ({ pages }, options = {}, config) => {
 
 module.exports = computeCollectionDataView
 
-const getAllPosts = (page, pages, config) =>
-  getDescendantPages(page, pages, {
+const getAllPosts = (page, pages, config) => {
+  // Handle missing page or config gracefully (e.g., in test fixtures)
+  if (!page || !config || !config.defaults) {
+    return []
+  }
+
+  return getDescendantPages(page, pages, {
     filterBy: (p) =>
       p._meta.isPost &&
       p.permalink &&
@@ -49,3 +54,4 @@ const getAllPosts = (page, pages, config) =>
     sortBy: page.sortCollectionBy || config.defaults.sortCollectionBy,
     skipUndefinedSort: true,
   })
+}

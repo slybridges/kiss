@@ -11,12 +11,16 @@ const loadConfig = (options = {}) => {
   setGlobalLogger(options.verbosity) // loadConfig is called in devServer outside of dev
   const relativeConfigFile = path.relative(__dirname, configFile)
   let configFunc
+  let config
   try {
     configFunc = require(relativeConfigFile)
+    if (typeof configFunc !== 'function') {
+      throw new TypeError(`Config file must export a function, got ${typeof configFunc}`)
+    }
+    config = configFunc(baseConfig)
   } catch (e) {
     throw new Error(`Error loading '${configFile}': ${e}`, { cause: e })
   }
-  let config = configFunc(baseConfig)
   if (configFile !== baseConfig.configFile) {
     config.configFile = configFile
   }

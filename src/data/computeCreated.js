@@ -2,7 +2,12 @@ const computeCreated = ({ _meta }, config, { pages }) => {
   // take the earliest created date of all descendants
   if (_meta.isCollection) {
     const earliest = _meta.descendants.reduce((earliest, pageId) => {
-      const created = pages[pageId][config.defaults.pagePublishedAttribute]
+      const page = pages[pageId]
+      if (!page) {
+        // page doesn't exist
+        return earliest
+      }
+      const created = page[config.defaults.pagePublishedAttribute]
       // assume an date is a valid Date object if it has a getMonth function
       if (!created || typeof created?.getMonth !== "function") {
         // invalid or net yet computed

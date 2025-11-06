@@ -60,7 +60,7 @@ const watch = async (options = {}, config) => {
   lastBuild = await build(options)
 
   if (options.incremental) {
-    console.info("Incremental build mode enabled")
+    global.logger.info("Incremental build mode enabled")
     // rebuild only the changed file
     fileWatcher.on("all", async (event, file) => {
       if (isBuildRunning) {
