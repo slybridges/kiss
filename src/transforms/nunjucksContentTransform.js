@@ -1,7 +1,7 @@
 const { findCollectionById } = require("../helpers.js")
 
 const nunjucksContentTransform = (page, options, config, context) => {
-  let templateContext = {}
+  let templateContext
   if (page._meta.isCollection) {
     templateContext = {
       ...context,

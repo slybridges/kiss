@@ -14,7 +14,7 @@ const loadConfig = (options = {}) => {
   try {
     configFunc = require(relativeConfigFile)
   } catch (e) {
-    throw new Error(`Error loading '${configFile}': ${e}`)
+    throw new Error(`Error loading '${configFile}': ${e}`, { cause: e })
   }
   let config = configFunc(baseConfig)
   if (configFile !== baseConfig.configFile) {
