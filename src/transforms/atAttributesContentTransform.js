@@ -297,13 +297,10 @@ const permalinkAttributeResolver = (
     }
     return [pageFound, null]
   } else if (checkAlternate) {
-    let altPermalink = null
     // if there is a trailing /, try without it and vice versa
-    if (permalink.endsWith("/")) {
-      altPermalink = permalink.slice(0, -1)
-    } else {
-      altPermalink = permalink + "/"
-    }
+    const altPermalink = permalink.endsWith("/")
+      ? permalink.slice(0, -1)
+      : permalink + "/"
     const alternate = permalinkAttributeResolver(
       altPermalink,
       page,
