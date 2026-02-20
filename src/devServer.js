@@ -20,7 +20,7 @@ const serve = async (options, config) => {
   } catch {
     global.logger.error(
       'vite is required for "kiss start" and "kiss serve".\n' +
-        "Install dev dependencies with: npm install",
+        "Install it with: npm install vite",
     )
     process.exit(1)
   }
