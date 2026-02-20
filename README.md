@@ -102,9 +102,9 @@ NODE_ENV=production npx kiss build
 
 kiss codebase is small and easy to navigate:
 
-- start with `config/defaultConfig.js` to get an understanding of how you can configure your project.
-- then, head over `build.js` `build()` method to understand the lifecycle of a build.
-- finally, head over to `data/initialPageData.js` and scroll down to the bottom to read about the default page metadata and dynamic computations
+- start with `src/config/defaultConfig.js` to get an understanding of how you can configure your project.
+- then, head over to `src/build.js` `build()` method to understand the lifecycle of a build.
+- finally, head over to `src/data/initialPageData.js` and scroll down to the bottom to read about the default page metadata and dynamic computations
 
 Alternatively check out [kiss-starter](https://github.com/slybridges/kiss-starter) for a real life minimal example.
 
