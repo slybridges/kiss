@@ -30,6 +30,7 @@ const initialPageData = {
   excludeFromSitemap: false,
   excludeFromWrite: false,
   image: computeImage,
+  lang: "en",
   layout: computeLayout,
   modified: computeModified,
   permalink: computePermalink,

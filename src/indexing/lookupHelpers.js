@@ -48,18 +48,22 @@ const findInIndex = (indexes, indexName, key, fallbackFn) => {
  * Find page by permalink using index or fallback.
  */
 const findPageByPermalink = (indexes, permalink, pages) => {
-  return findInIndex(indexes, "byPermalink", permalink, () =>
-    Object.values(pages).find((p) => p.permalink === permalink),
-  )
+  return findInIndex(indexes, "byPermalink", permalink, () => {
+    const result = Object.values(pages).find((p) => p.permalink === permalink)
+    return result || null
+  })
 }
 
 /**
  * Find page by input path using index or fallback.
  */
 const findPageByInputPath = (indexes, inputPath, pages) => {
-  return findInIndex(indexes, "byInputPath", inputPath, () =>
-    Object.values(pages).find((p) => p._meta?.inputPath === inputPath),
-  )
+  return findInIndex(indexes, "byInputPath", inputPath, () => {
+    const result = Object.values(pages).find(
+      (p) => p._meta?.inputPath === inputPath,
+    )
+    return result || null
+  })
 }
 
 /**
@@ -67,40 +71,48 @@ const findPageByInputPath = (indexes, inputPath, pages) => {
  */
 const findPageByIdAndLang = (indexes, id, lang, pages) => {
   const key = `${id}:${lang}`
-  return findInIndex(indexes, "byIdAndLang", key, () =>
-    Object.values(pages).find((p) => p.id === id && p.lang === lang),
-  )
+  return findInIndex(indexes, "byIdAndLang", key, () => {
+    const result = Object.values(pages).find(
+      (p) => p.id === id && p.lang === lang,
+    )
+    return result || null
+  })
 }
 
 /**
  * Find page by derivative permalink using index or fallback.
  */
 const findPageByDerivative = (indexes, derivativePermalink, pages) => {
-  return findInIndex(indexes, "byDerivative", derivativePermalink, () =>
-    Object.values(pages).find((p) =>
+  return findInIndex(indexes, "byDerivative", derivativePermalink, () => {
+    const result = Object.values(pages).find((p) =>
       p.derivatives?.find((d) => d.permalink === derivativePermalink),
-    ),
-  )
+    )
+    return result || null
+  })
 }
 
 /**
  * Find parent page by directory permalink using index or fallback.
  */
 const findParentByPermalink = (indexes, parentPermalink, pages) => {
-  return findInIndex(indexes, "byParentPermalink", parentPermalink, () =>
-    Object.values(pages).find((p) => p.permalink === parentPermalink),
-  )
+  return findInIndex(indexes, "byParentPermalink", parentPermalink, () => {
+    const result = Object.values(pages).find(
+      (p) => p.permalink === parentPermalink,
+    )
+    return result || null
+  })
 }
 
 /**
  * Find page by input source path using index or fallback.
  */
 const findPageByInputSource = (indexes, inputSourcePath, pages) => {
-  return findInIndex(indexes, "byInputSource", inputSourcePath, () =>
-    Object.values(pages).find((p) =>
+  return findInIndex(indexes, "byInputSource", inputSourcePath, () => {
+    const result = Object.values(pages).find((p) =>
       p._meta?.inputSources?.some((s) => s.path === inputSourcePath),
-    ),
-  )
+    )
+    return result || null
+  })
 }
 
 module.exports = {

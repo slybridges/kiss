@@ -19,9 +19,13 @@ const { setGlobalLogger } = require("./logger")
 const hasOwnProperty = Object.prototype.hasOwnProperty
 
 const build = async (options = {}, lastBuild = {}, version = 0) => {
-  console.time("Build time")
-
   const { configFile, unsafeBuild, verbosity, watchMode } = options
+
+  // Only show build time for verbose logging levels
+  const showBuildTime = ["log", "info"].includes(verbosity)
+  if (showBuildTime) {
+    console.time("Build time")
+  }
 
   setGlobalLogger(verbosity)
 
@@ -152,7 +156,9 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
         )
       } else {
         global.logger.info("Exiting build with errors.")
-        console.timeEnd("Build time")
+        if (showBuildTime) {
+          console.timeEnd("Build time")
+        }
         process.exit(1)
       }
     }
@@ -161,7 +167,9 @@ const build = async (options = {}, lastBuild = {}, version = 0) => {
   } else {
     global.logger.success(`Build completed!`)
   }
-  console.timeEnd("Build time")
+  if (showBuildTime) {
+    console.timeEnd("Build time")
+  }
 
   return { context, config }
 }
@@ -684,9 +692,10 @@ const getOptions = (config, namespace, options) => {
 
 const loadContent = async (config, context, buildFlags) => {
   const { incremental, buildPageIds } = buildFlags
-  let pages = context.pages
-  let files = []
   const isIncrementalBuild = incremental && buildPageIds?.length > 0
+  // For incremental builds, reuse existing pages. For full rebuilds, start fresh.
+  let pages = isIncrementalBuild ? context.pages : {}
+  let files = []
 
   if (isIncrementalBuild) {
     // incremental build: one content file changed
@@ -795,6 +804,29 @@ const loadContent = async (config, context, buildFlags) => {
       page = await handler(file.path, options, page, context, config)
       // relative @attributes to absolute
       page = relativeToAbsoluteAttributes(page, options, config)
+
+      // Update cascadeData after content is loaded
+      // Only index files contribute to cascadeData (data that children inherit)
+      // Post files override the page but don't cascade to children
+      const inputPathObject = path.parse(file.path)
+      const isIndexFile = inputPathObject.base.startsWith("index.")
+      const isPostFile = inputPathObject.base.startsWith("post.")
+
+      if (isIndexFile) {
+        // Index files set cascadeData - this is what children will inherit
+        // eslint-disable-next-line no-unused-vars
+        const { _meta, ...cascadeableData } = page
+        page._meta.cascadeData = cascadeableData
+      } else if (isPostFile) {
+        // Post files don't contribute to cascade - preserve existing cascadeData
+        if (pages[page._meta.id]?._meta?.cascadeData) {
+          page._meta.cascadeData = pages[page._meta.id]._meta.cascadeData
+        }
+      } else if (pages[page._meta.id]?._meta?.cascadeData) {
+        // Other files preserve cascadeData from previous version
+        page._meta.cascadeData = pages[page._meta.id]._meta.cascadeData
+      }
+
       pages[page._meta.id] = page
       global.logger.log(`- [${handler.name}] loaded '${file.path}'`)
     } catch (err) {
@@ -1009,3 +1041,31 @@ const writeStaticSite = async (context, config, buildFlags) => {
     }),
   )
 }
+
+/** Private functions - exported for testing only **/
+
+// The following functions are internal implementation details and should not be
+// used by external code. They are exported with a leading underscore only to
+// enable comprehensive unit testing. These exports may change without notice.
+
+module.exports._applyTransforms = applyTransforms
+module.exports._computeBuildFlags = computeBuildFlags
+module.exports._computeBuildPageIDs = computeBuildPageIDs
+module.exports._computeIncrementalHookBuildFlag =
+  computeIncrementalHookBuildFlag
+module.exports._computeDataViews = computeDataViews
+module.exports._computePageData = computePageData
+module.exports._computeAllPagesData = computeAllPagesData
+module.exports._countPendingDependencies = countPendingDependencies
+module.exports._directoryCollectionLoader = directoryCollectionLoader
+module.exports._isComputableValue = isComputableValue
+module.exports._findMatchingLoaderId = findMatchingLoaderId
+module.exports._getFiles = getFiles
+module.exports._getOptions = getOptions
+module.exports._loadContent = loadContent
+module.exports._runConfigHooks = runConfigHooks
+module.exports._runCopyHook = runCopyHook
+module.exports._runExecHook = runExecHook
+module.exports._sortFiles = sortFiles
+module.exports._runHandlerHook = runHandlerHook
+module.exports._writeStaticSite = writeStaticSite

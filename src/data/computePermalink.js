@@ -2,10 +2,12 @@ const path = require("path")
 
 const computePermalink = ({ slug, _meta }, config, { pages }) => {
   // remove top level dir (dirs.content)
-  let permalink = _meta.inputPath.replace(
-    new RegExp(`^${config.dirs.content}`),
-    "",
-  )
+  let contentDir = config.dirs.content
+  // Remove trailing slash from content dir for consistent replacement
+  if (contentDir.endsWith("/")) {
+    contentDir = contentDir.slice(0, -1)
+  }
+  let permalink = _meta.inputPath.replace(new RegExp(`^${contentDir}`), "")
   if (_meta.outputType === "HTML") {
     permalink = permalink
       // replace index.[ext] or post.[ext] by terminal /

@@ -115,6 +115,11 @@ const getDescendantPages = (
   pages,
   { filterBy, sortBy, skipUndefinedSort } = {},
 ) => {
+  // Handle missing descendants gracefully (e.g., in test fixtures)
+  if (!page._meta || !page._meta.descendants) {
+    return []
+  }
+
   let descendants = page._meta.descendants.map((desc) => pages[desc])
   if (filterBy) {
     descendants = _.filter(descendants, filterBy)
@@ -216,7 +221,7 @@ const getPageFromSource = (source, parentPage, pages, config, options = {}) => {
   if (!page) {
     if (throwIfNotFound) {
       throw new Error(
-        `Page '${source}' not found. Either it doesn't exist or it wasn't loaded.'`,
+        `Page '${source}' not found. Either it doesn't exist or it wasn't loaded. If path is relative, consider using @file to reference it.'`,
       )
     }
     return null
@@ -231,8 +236,18 @@ const getParentPage = (pages, id, isPostAsking) => {
     global.logger.error(`Couldn't find parent with id '${id}'`)
     return null
   }
+
   if (!isPostAsking) {
-    // omit attributes that shouldn't cascade, unless the page asking is a post
+    // Non-post files should inherit only from cascadeData (index.* files only)
+    // Post files inherit the full parent data (including post overrides)
+    if (parent._meta?.cascadeData) {
+      // Use cascadeData which contains only data from index.* files
+      parent = {
+        ...parent._meta.cascadeData,
+        _meta: _.omit(parent._meta, ["cascadeData"]),
+      }
+    }
+    // omit attributes that shouldn't cascade
     const attributesToOmit = ["_meta.inputSources"]
     parent = _.omit(parent, attributesToOmit)
   }
@@ -345,6 +360,11 @@ const sortPageIds = (ids, pages, sortBy, options) => {
 }
 
 const sortPages = (pages, sortBy, { skipUndefinedSort } = {}) => {
+  // Handle missing or invalid sortBy parameter
+  if (!sortBy || typeof sortBy !== "string") {
+    return pages
+  }
+
   let order = "asc"
   if (sortBy[0] === "-") {
     order = "desc"
@@ -375,20 +395,49 @@ const JSON_PLACEHOLDERS = {
  */
 const jsonSafeStringify = (obj) => {
   const specialValues = new Map()
+  const dateMap = new Map() // Track original Date objects
+
+  // First pass: find all Date objects and store them
+  const findDates = (o, path = []) => {
+    if (o instanceof Date) {
+      dateMap.set(path.join("."), o)
+    } else if (o && typeof o === "object") {
+      for (const key in o) {
+        if (Object.prototype.hasOwnProperty.call(o, key)) {
+          findDates(o[key], [...path, key])
+        }
+      }
+    }
+  }
+  findDates(obj)
 
   const replacer = (key, value) => {
+    // Check if this path corresponds to a Date object (unused for now)
+    // const currentPath = this && this.path ? [...this.path, key].join(".") : key
+
     // Handle functions - store them and replace with placeholder
     if (typeof value === "function") {
       const id = `${JSON_PLACEHOLDERS.FUNCTION}_${specialValues.size}`
       specialValues.set(id, value)
       return id
     }
-    // Handle dates - store them and replace with placeholder
-    if (value instanceof Date) {
-      const id = `${JSON_PLACEHOLDERS.DATE}_${specialValues.size}`
-      specialValues.set(id, value)
-      return id
+
+    // Check if the original value at this path was a Date
+    // Since dates get converted to strings by toJSON before replacer sees them,
+    // we need to check our dateMap
+    for (const [path, date] of dateMap.entries()) {
+      // Match the path pattern
+      if ((key && path.endsWith(key)) || path === key) {
+        // Verify this is the same date by checking the string value
+        if (typeof value === "string" && value === date.toJSON()) {
+          const id = `${JSON_PLACEHOLDERS.DATE}_${specialValues.size}`
+          specialValues.set(id, date)
+          dateMap.delete(path) // Remove once processed
+          return id
+        }
+      }
     }
+
     // Handle undefined - store it and replace with placeholder
     if (value === undefined) {
       const id = `${JSON_PLACEHOLDERS.UNDEFINED}_${specialValues.size}`

@@ -7,7 +7,14 @@
     "kiss": "src/cli.js"
   },
   "scripts": {
-    "build": "node src/index.js"
+    "build": "node src/index.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "npm run lint && npm run format:check",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "test:coverage": "node --experimental-test-coverage --test"
   },
   "author": "Sylvestre Dupont",
   "license": "MIT",
