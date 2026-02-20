@@ -416,10 +416,7 @@ describe("jsonContextWriter", () => {
     const parsedData = JSON.parse(jsonContent)
 
     assert.equal(parsedData.site.title, "Test Site with émojis 🚀")
-    assert.equal(
-      parsedData.site.description,
-      "Special chars: áéíóú ñ ü © ® ™",
-    )
+    assert.equal(parsedData.site.description, "Special chars: áéíóú ñ ü © ® ™")
     assert.equal(parsedData.site.quotes, "Mixed \"quotes\" and 'apostrophes'")
     assert.equal(parsedData.site.unicode, "Math symbols: ∑ ∞ π ≈ ≠")
   })
