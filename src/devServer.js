@@ -2,7 +2,6 @@ const _ = require("lodash")
 const { pathExists, outputFile } = require("fs-extra")
 const path = require("path")
 const chokidar = require("chokidar")
-const bs = require("browser-sync").create()
 
 const { loadConfig } = require("./config")
 const { resetGlobalLogger } = require("./logger")
@@ -14,28 +13,38 @@ let buildVersion = 0
 let isBuildRunning = false
 let changeBacklog = []
 
-const serve = (options, config) => {
+const serve = async (options, config) => {
+  let createViteServer
+  try {
+    createViteServer = require("vite").createServer
+  } catch {
+    global.logger.error(
+      'vite is required for "kiss start" and "kiss serve".\n' +
+        "Install dev dependencies with: npm install",
+    )
+    process.exit(1)
+  }
   if (!config) {
     config = loadConfig(options)
   }
-  //Launch Browser Sync server
-  bs.init({
-    watch: true,
-    watchOptions: { awaitWriteFinish: true },
-    server: {
-      baseDir: config.dirs.public,
-      serveStaticOptions: {
-        extensions: ["html"],
-      },
-    },
+  const server = await createViteServer({
+    root: config.dirs.public,
+    configFile: false,
+    server: { open: true, port: 3000 },
+    appType: "mpa",
+    logLevel: "silent",
   })
+  await server.listen()
+  global.logger.success(
+    `Dev server running at http://localhost:${server.config.server.port}/`,
+  )
 }
 
 const start = async (options) => {
   const config = loadConfig(options)
   await preparePublicFolder(config)
-  watch(options, config)
-  serve(options, config)
+  await watch(options, config)
+  await serve(options, config)
 }
 
 const watch = async (options = {}, config) => {
@@ -132,7 +141,7 @@ const clearRequireCache = () => {
 const preparePublicFolder = async (config) => {
   const publicRootFile = path.join(config.dirs.public, "index.html")
   if (!(await pathExists(publicRootFile))) {
-    // create a placeholder index.html file so that BrowserSync can start
+    // create a placeholder index.html file so that the dev server can start
     // with no error
     return outputFile(
       publicRootFile,

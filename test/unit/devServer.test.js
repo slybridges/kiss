@@ -4,21 +4,20 @@ const fs = require("fs-extra")
 const path = require("path")
 
 // Mock dependencies
-const mockBrowserSync = {
+const mockVite = {
   instances: [],
-  create: function () {
+  createServer: async function (config) {
     const instance = {
-      init: function (config) {
-        this.config = config
-        mockBrowserSync.instances.push(this)
-      },
-      exit: function () {
-        const index = mockBrowserSync.instances.indexOf(this)
+      config: { server: { port: 3000 }, ...config },
+      listen: async function () {},
+      close: async function () {
+        const index = mockVite.instances.indexOf(this)
         if (index > -1) {
-          mockBrowserSync.instances.splice(index, 1)
+          mockVite.instances.splice(index, 1)
         }
       },
     }
+    mockVite.instances.push(instance)
     return instance
   },
   reset: function () {
@@ -104,7 +103,7 @@ const mockLogger = {
 }
 
 // Mock the require calls
-require.cache[require.resolve("browser-sync")] = { exports: mockBrowserSync }
+require.cache[require.resolve("vite")] = { exports: mockVite }
 require.cache[require.resolve("chokidar")] = { exports: mockChokidar }
 require.cache[require.resolve("../../src/config")] = { exports: mockConfig }
 require.cache[require.resolve("../../src/build.js")] = { exports: mockBuild }
@@ -122,7 +121,7 @@ describe("devServer", () => {
     tempDir = createTempDir()
 
     // Reset mocks
-    mockBrowserSync.reset()
+    mockVite.reset()
     mockChokidar.reset()
     mockBuild.lastCall = null
     mockBuild.callCount = 0
@@ -155,10 +154,10 @@ describe("devServer", () => {
       }
     })
 
-    // Close any browser-sync instances
-    mockBrowserSync.instances.forEach((i) => {
+    // Close any vite server instances
+    mockVite.instances.forEach((i) => {
       try {
-        i.exit()
+        i.close()
       } catch {
         // Ignore errors
       }
@@ -170,46 +169,44 @@ describe("devServer", () => {
   })
 
   describe("serve", () => {
-    it("should initialize browser-sync with correct config", () => {
+    it("should initialize vite dev server with correct config", async () => {
       const config = {
         dirs: {
           public: tempDir,
         },
       }
 
-      serve({}, config)
+      await serve({}, config)
 
-      assert.equal(mockBrowserSync.instances.length, 1)
-      const instance = mockBrowserSync.instances[0]
+      assert.equal(mockVite.instances.length, 1)
+      const instance = mockVite.instances[0]
       assert.ok(instance.config)
-      assert.equal(instance.config.server.baseDir, tempDir)
-      assert.ok(instance.config.watch)
-      assert.ok(instance.config.watchOptions.awaitWriteFinish)
-      assert.deepEqual(instance.config.server.serveStaticOptions.extensions, [
-        "html",
-      ])
+      assert.equal(instance.config.root, tempDir)
+      assert.equal(instance.config.configFile, false)
+      assert.equal(instance.config.server.open, true)
+      assert.equal(instance.config.appType, "mpa")
     })
 
-    it("should load config when not provided", () => {
+    it("should load config when not provided", async () => {
       const options = { configFile: "test.config.js" }
 
-      serve(options)
+      await serve(options)
 
-      assert.equal(mockBrowserSync.instances.length, 1)
+      assert.equal(mockVite.instances.length, 1)
       // Should have loaded config
     })
 
-    it("should use provided config", () => {
+    it("should use provided config", async () => {
       const config = {
         dirs: {
           public: "/custom/public",
         },
       }
 
-      serve({}, config)
+      await serve({}, config)
 
-      const instance = mockBrowserSync.instances[0]
-      assert.equal(instance.config.server.baseDir, "/custom/public")
+      const instance = mockVite.instances[0]
+      assert.equal(instance.config.root, "/custom/public")
     })
   })
 
@@ -236,8 +233,8 @@ describe("devServer", () => {
 
       await start(options)
 
-      // Should have created browser-sync instance
-      assert.equal(mockBrowserSync.instances.length, 1)
+      // Should have created vite server instance
+      assert.equal(mockVite.instances.length, 1)
 
       // Should have created file watcher
       assert.equal(mockChokidar.watchers.length, 1)
