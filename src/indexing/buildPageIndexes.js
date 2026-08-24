@@ -25,6 +25,9 @@ const buildPageIndexes = (pages) => {
     byInputSource: new Map(),
   }
 
+  // Pages sharing the same (id, lang), reported as one error per tuple below
+  const duplicateIdPages = new Map()
+
   // Build all indexes in a single pass through pages
   for (const page of Object.values(pages)) {
     // Permalink index
@@ -45,7 +48,15 @@ const buildPageIndexes = (pages) => {
 
     // ID and language index for @id resolution
     if (page.id && page.lang) {
-      indexes.byIdAndLang.set(`${page.id}:${page.lang}`, page)
+      const key = `${page.id}:${page.lang}`
+      const existing = indexes.byIdAndLang.get(key)
+      if (existing && existing !== page) {
+        if (!duplicateIdPages.has(key)) {
+          duplicateIdPages.set(key, [existing])
+        }
+        duplicateIdPages.get(key).push(page)
+      }
+      indexes.byIdAndLang.set(key, page)
     }
 
     // Derivatives index for image permalinks
@@ -65,6 +76,17 @@ const buildPageIndexes = (pages) => {
         }
       }
     }
+  }
+
+  // Duplicate (id, lang) makes @id links and hreflang resolution ambiguous
+  for (const conflictingPages of duplicateIdPages.values()) {
+    const { id, lang } = conflictingPages[0]
+    global.logger.error(
+      `Duplicate page id '${id}' for lang '${lang}' found in:\n` +
+        conflictingPages
+          .map((page) => `  - ${page._meta?.inputPath}`)
+          .join("\n"),
+    )
   }
 
   return indexes
