@@ -1,6 +1,10 @@
-const { describe, it } = require("node:test")
+const { describe, it, beforeEach, afterEach } = require("node:test")
 const assert = require("assert/strict")
 const buildPageIndexes = require("../../../src/indexing/buildPageIndexes")
+const {
+  createCapturingLogger,
+  restoreGlobalLogger,
+} = require("../../../test-utils/helpers")
 
 describe("buildPageIndexes", () => {
   it("should create empty indexes for empty pages object", () => {
@@ -381,6 +385,206 @@ describe("buildPageIndexes", () => {
     // Only input sources with paths should be indexed
     assert.equal(indexes.byInputSource.get("content/valid.md"), pages["./page"])
     assert.equal(indexes.byInputSource.size, 1)
+  })
+
+  describe("duplicate (id, lang) detection", () => {
+    let originalLogger
+    let captured
+
+    beforeEach(() => {
+      originalLogger = global.logger
+      const capturing = createCapturingLogger()
+      global.logger = capturing.logger
+      captured = capturing.captured
+    })
+
+    afterEach(() => {
+      restoreGlobalLogger(originalLogger)
+    })
+
+    it("should not report an error for different ids with the same lang", () => {
+      const pages = {
+        "./a": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./a", inputPath: "content/a.md" },
+        },
+        "./b": {
+          id: "article-b",
+          lang: "en",
+          _meta: { id: "./b", inputPath: "content/b.md" },
+        },
+      }
+
+      const indexes = buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 0)
+      assert.equal(indexes.byIdAndLang.size, 2)
+      assert.equal(indexes.byIdAndLang.get("article-a:en"), pages["./a"])
+      assert.equal(indexes.byIdAndLang.get("article-b:en"), pages["./b"])
+    })
+
+    it("should report an error for the same id and the same lang", () => {
+      const pages = {
+        "./a": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./a", inputPath: "content/a.md" },
+        },
+        "./b": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./b", inputPath: "content/b.md" },
+        },
+      }
+
+      buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 1)
+      const message = captured.error[0][0]
+      assert.match(message, /Duplicate page id 'article-a' for lang 'en'/)
+      assert.match(message, /content\/a\.md/)
+      assert.match(message, /content\/b\.md/)
+    })
+
+    it("should report a single error listing all pages with the same id and lang", () => {
+      const pages = {
+        "./a": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./a", inputPath: "content/a.md" },
+        },
+        "./b": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./b", inputPath: "content/b.md" },
+        },
+        "./c": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./c", inputPath: "content/c.md" },
+        },
+      }
+
+      buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 1)
+      const message = captured.error[0][0]
+      assert.match(message, /Duplicate page id 'article-a' for lang 'en'/)
+      assert.match(message, /content\/a\.md/)
+      assert.match(message, /content\/b\.md/)
+      assert.match(message, /content\/c\.md/)
+    })
+
+    it("should report one error per conflicting (id, lang) tuple", () => {
+      const pages = {
+        "./a": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./a", inputPath: "content/a.md" },
+        },
+        "./b": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./b", inputPath: "content/b.md" },
+        },
+        "./c-en": {
+          id: "article-c",
+          lang: "en",
+          _meta: { id: "./c-en", inputPath: "content/c.md" },
+        },
+        "./c-fr": {
+          id: "article-c",
+          lang: "fr",
+          _meta: { id: "./c-fr", inputPath: "content/fr/c.md" },
+        },
+        "./c-fr-copy": {
+          id: "article-c",
+          lang: "fr",
+          _meta: { id: "./c-fr-copy", inputPath: "content/fr/c-copy.md" },
+        },
+      }
+
+      buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 2)
+      const messages = captured.error.map((args) => args[0])
+      assert.ok(
+        messages.some((m) => /'article-a' for lang 'en'/.test(m)),
+        "expected an error for (article-a, en)",
+      )
+      assert.ok(
+        messages.some((m) => /'article-c' for lang 'fr'/.test(m)),
+        "expected an error for (article-c, fr)",
+      )
+    })
+
+    it("should not report an error for the same id with different langs", () => {
+      const pages = {
+        "./a-en": {
+          id: "article-a",
+          lang: "en",
+          _meta: { id: "./a-en", inputPath: "content/a.md" },
+        },
+        "./a-fr": {
+          id: "article-a",
+          lang: "fr",
+          _meta: { id: "./a-fr", inputPath: "content/fr/a.md" },
+        },
+      }
+
+      const indexes = buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 0)
+      assert.equal(indexes.byIdAndLang.size, 2)
+      assert.equal(indexes.byIdAndLang.get("article-a:en"), pages["./a-en"])
+      assert.equal(indexes.byIdAndLang.get("article-a:fr"), pages["./a-fr"])
+    })
+
+    it("should not report an error for pages without an id or with a blank id", () => {
+      const pages = {
+        "./a": {
+          id: "",
+          lang: "en",
+          _meta: { id: "./a", inputPath: "content/a.md" },
+        },
+        "./b": {
+          id: "",
+          lang: "en",
+          _meta: { id: "./b", inputPath: "content/b.md" },
+        },
+        "./c": {
+          lang: "en",
+          _meta: { id: "./c", inputPath: "content/c.md" },
+        },
+        "./d": {
+          lang: "en",
+          _meta: { id: "./d", inputPath: "content/d.md" },
+        },
+      }
+
+      const indexes = buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 0)
+      assert.equal(indexes.byIdAndLang.size, 0)
+    })
+
+    it("should not report an error when the same page object is indexed twice", () => {
+      const page = {
+        id: "article-a",
+        lang: "en",
+        _meta: { id: "./a", inputPath: "content/a.md" },
+      }
+      const pages = {
+        "./a": page,
+        "./a-alias": page,
+      }
+
+      const indexes = buildPageIndexes(pages)
+
+      assert.equal(captured.error.length, 0)
+      assert.equal(indexes.byIdAndLang.size, 1)
+    })
   })
 
   it("should return all expected index types", () => {
