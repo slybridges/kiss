@@ -5,6 +5,9 @@ const {
   mockGlobalLogger,
   createMockConfig,
   createMockContext,
+  createTempDir,
+  cleanupTempDir,
+  createTestFile,
 } = require("../../test-utils/helpers")
 
 // Import private functions for testing
@@ -218,6 +221,36 @@ describe("build.js private functions", () => {
       require.cache[
         require.resolve("../../src/helpers")
       ].exports.computeParentId = originalComputeParentId
+    })
+
+    it("should return empty array when parent page of new file is not loaded yet", () => {
+      // e.g. an image copied into a new post folder before its post.md exists
+      // the file must exist on disk for the loader to match it
+      const contentDir = createTempDir()
+      const contentFile = createTestFile(contentDir, "new-post/image.jpeg", "")
+      const config = createMockConfig({
+        dirs: { content: contentDir },
+        loaders: [
+          {
+            handler: () => {},
+            match: `${contentDir}/**/*.jpeg`,
+          },
+        ],
+      })
+      const context = createMockContext({ pages: {} })
+      const buildFlags = {
+        incremental: true,
+        contentFile,
+        event: "add",
+      }
+
+      try {
+        const ids = _computeBuildPageIDs(config, context, buildFlags)
+
+        assert.deepEqual(ids, [])
+      } finally {
+        cleanupTempDir(contentDir)
+      }
     })
 
     it("should return empty array when existing page not found for change event", () => {

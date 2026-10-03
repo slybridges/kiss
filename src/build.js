@@ -365,6 +365,13 @@ const computeBuildPageIDs = (config, context, buildFlags) => {
         buildPageIds = [pageId]
         // make the parent the default page
         page = context.pages[parentId]
+        if (!page) {
+          // parent not loaded yet (e.g. new folder whose post.md hasn't been seen)
+          global.logger.warn(
+            `Parent page '${parentId}' not loaded yet for new file '${buildFlags.contentFile}'.`,
+          )
+          return []
+        }
         isParentPage = true
       } else {
         global.logger.warn(
