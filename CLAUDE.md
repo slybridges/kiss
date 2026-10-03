@@ -11,8 +11,8 @@ kiss (Keep It Simple and Static) is a low-tech static site generator built with 
 ```bash
 # Testing
 npm test                           # Run all tests (unit + integration)
-node --test test/unit/             # Run only unit tests
-node --test test/integration/      # Run only integration tests
+node --test 'test/unit/**/*.test.js'         # Run only unit tests
+node --test 'test/integration/**/*.test.js'  # Run only integration tests
 node --test test/unit/build.test.js  # Run a single test file
 npm run test:watch                 # Watch mode
 npm run test:coverage              # Coverage report
