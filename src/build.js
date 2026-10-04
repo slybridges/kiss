@@ -379,6 +379,19 @@ const computeBuildPageIDs = (config, context, buildFlags) => {
         )
         return []
       }
+    } else if (!page._meta.ascendants) {
+      // static file (e.g. an image): not part of the page hierarchy (see
+      // staticLoader), so rebuild it with its parent page, as for a new file
+      const parent = context.pages[page._meta.parent]
+      if (!parent) {
+        global.logger.warn(
+          `Parent page '${page._meta.parent}' not found for '${buildFlags.contentFile}'.`,
+        )
+        return []
+      }
+      buildPageIds = [page._meta.id]
+      page = parent
+      isParentPage = true
     }
     // ascendants
     buildPageIds = buildPageIds.concat(page._meta.ascendants)

@@ -267,6 +267,39 @@ describe("build.js private functions", () => {
       assert.deepEqual(ids, [])
     })
 
+    it("should rebuild an already loaded static file with its parent page", () => {
+      // static files (e.g. images) have no ascendants/descendants
+      const config = createMockConfig()
+      const context = createMockContext({
+        pages: {
+          "./post/image.jpeg": {
+            _meta: {
+              id: "./post/image.jpeg",
+              parent: "./post",
+              inputSources: [{ path: "content/post/image.jpeg" }],
+            },
+          },
+          "./post": {
+            _meta: {
+              id: "./post",
+              ascendants: ["."],
+              descendants: ["./post/image.jpeg"],
+              inputSources: [{ path: "content/post/post.md" }],
+            },
+          },
+        },
+      })
+      const buildFlags = {
+        incremental: true,
+        contentFile: "content/post/image.jpeg",
+        event: "change",
+      }
+
+      const ids = _computeBuildPageIDs(config, context, buildFlags)
+
+      assert.deepEqual(ids, ["./post/image.jpeg", ".", "./post"])
+    })
+
     it("should return pages using specific template for template changes", () => {
       const config = createMockConfig()
       const context = createMockContext({

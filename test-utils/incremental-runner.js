@@ -462,6 +462,53 @@ New content.
     }
   })
 
+  // Test 5b: Change an image that is already loaded. Static files have no
+  // ascendants/descendants, which used to crash the incremental build.
+  await runTest(
+    "should rebuild when an already loaded image changes",
+    async () => {
+      const outputDir = createTempDir()
+      process.chdir(fixtureDir)
+      process.env.TEST_PUBLIC_DIR = outputDir
+
+      try {
+        const initialResult = await build({
+          configFile: "kiss.config.js",
+          verbosity,
+          incremental: true,
+        })
+
+        // the dev server gets this when an image is edited, or copied in while
+        // a full rebuild is running (which loads it before its 'add' event)
+        await build(
+          {
+            configFile: "kiss.config.js",
+            verbosity,
+            incremental: true,
+            event: "change",
+            file: "content/images/photo-large.jpg",
+          },
+          initialResult,
+          1,
+        )
+
+        const sitedata = JSON.parse(
+          await fs.readFile(path.join(outputDir, "sitedata.json"), "utf8"),
+        )
+        const image = Object.values(sitedata.pages).find(
+          (p) => p._meta.id === "./images/photo-large.jpg",
+        )
+        assert(image, "Image should still exist in sitedata")
+        assert(
+          typeof image.permalink === "string",
+          "Image permalink should be computed",
+        )
+      } finally {
+        await fs.remove(outputDir)
+      }
+    },
+  )
+
   // Test 6: Delete article (triggers full rebuild)
   await runTest("should trigger full rebuild on unlink event", async () => {
     const outputDir = createTempDir()
